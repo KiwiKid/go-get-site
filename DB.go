@@ -17,6 +17,10 @@ type Page struct {
 	DateUpdated time.Time `gorm:"type:timestamp"`
 }
 
+func (Page) TableName() string {
+	return "pgml.page"
+}
+
 type DB struct {
 	conn *gorm.DB
 }

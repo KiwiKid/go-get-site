@@ -30,8 +30,6 @@ func main() {
 
 	url := os.Getenv("WEBSITE_NAME")
 
-
-	log.Printf(connStr)
 	db, err := NewDB(connStr)
 	if err != nil {
 		panic(err)
