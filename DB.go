@@ -21,6 +21,17 @@ func (Page) TableName() string {
 	return "pgml.page"
 }
 
+type Link struct {
+	ID          uint      `gorm:"primary_key"`
+	URL         string    `gorm:"size:255"`
+	DateCreated time.Time `gorm:"type:timestamp"`
+	LastProcessed time.Time `gorm:"type:timestamp"`
+}
+
+func (Link) TableName() string {
+	return "pgml.link"
+}
+
 type DB struct {
 	conn *gorm.DB
 }
@@ -34,12 +45,19 @@ func NewDB(connStr string) (*DB, error) {
 
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
 	db.AutoMigrate(&Page{})
-
+	db.AutoMigrate(&Link{})
+	
 	return &DB{conn: db}, nil
 }
 
-// InsertPage inserts a new page record into the database using GORM
 func (db *DB) InsertPage(page Page) error {
 	result := db.conn.Create(&page)
+	return result.Error
+}
+
+
+
+func (db *DB) InsertLink(link Link) error {
+	result := db.conn.Create(&link)
 	return result.Error
 }

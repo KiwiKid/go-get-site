@@ -65,6 +65,11 @@ func processLink(ctx context.Context, link string, db DB) {
 	}
 
 	// Mark the link as processed
+	insertUrlErr := db.InsertLink(Link{URL: link, DateCreated: time.Now(), LastProcessed: time.Now() })
+	if insertUrlErr != nil {
+		log.Printf("Error saving link %s: %v", link, err)
+		return
+	}
 	processedLinks[link] = true
 
 	// Process child links
