@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/joho/godotenv"
@@ -26,17 +28,25 @@ func main() {
 	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
 	
-	connStr := os.Getenv("DB_CONN_STR")
+   	homeComp := home()
 
-	url := os.Getenv("WEBSITE_NAME")
+	http.Handle("/", templ.Handler(homeComp))
 
-	db, err := NewDB(connStr)
-	if err != nil {
-		panic(err)
-	}
+    fmt.Println("Listening on :3000")
+    if err := http.ListenAndServe(":3000", nil); err != nil {
+        log.Printf("error listening: %v", err)
+    }
 
 	// startURL := "https://www.hearwell.co.nz/" // Replace with your domain
-	processLink(ctx, url, *db)
+	// 	connStr := os.Getenv("DB_CONN_STR")
+
+	//url := os.Getenv("WEBSITE_NAME")
+//
+	//db, err := NewDB(connStr)
+	//if err != nil {
+	//	panic(err)
+	//}
+	// processLink(ctx, url, *db)
 }
 
 func processLink(ctx context.Context, link string, db DB) {
