@@ -16,6 +16,8 @@ import (
 
 var processedLinks = make(map[string]bool)
 
+// Create a channel to send data
+var dataCh = make(chan string)
 
 func main() {
 	err := godotenv.Load()
@@ -27,21 +29,56 @@ func main() {
 
 	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
-	
-   	homeComp := home()
+
+	homeComp := home()
 
 	http.Handle("/", templ.Handler(homeComp))
 
-    fmt.Println("Listening on :3000")
-    if err := http.ListenAndServe(":3000", nil); err != nil {
-        log.Printf("error listening: %v", err)
-    }
+	http.HandleFunc("/start-site", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Only POST requests are allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Parse the form data to retrieve 'websiteUrl'
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+
+		websiteUrl := r.FormValue("websiteUrl")
+		if websiteUrl == "" {
+			http.Error(w, "websiteUrl is required", http.StatusBadRequest)
+			return
+		}
+
+		//connStr := os.Getenv("DB_CONN_STR")
+
+		//db, err := NewDB(connStr)
+		//if err != nil {
+		//	panic(err)
+		//}
+
+		taskComp := task(websiteUrl)
+
+		// Return the templ.Handler(taskComp)
+		templ.Handler(taskComp).ServeHTTP(w, r)
+
+	})
+
+	http.HandleFunc("/progress", eventsHandler)
+
+	fmt.Println("Listening on :3000")
+	if err := http.ListenAndServe(":3000", nil); err != nil {
+		log.Printf("error listening: %v", err)
+	}
 
 	// startURL := "https://www.hearwell.co.nz/" // Replace with your domain
 	// 	connStr := os.Getenv("DB_CONN_STR")
 
 	//url := os.Getenv("WEBSITE_NAME")
-//
+	//
 	//db, err := NewDB(connStr)
 	//if err != nil {
 	//	panic(err)
@@ -49,17 +86,26 @@ func main() {
 	// processLink(ctx, url, *db)
 }
 
+func sendMessage(code string, messageStr string) {
+	data := fmt.Sprintf(`{"code": "%s", "messageStr": "%s"}`, code, messageStr)
+	dataCh <- data
+}
+
 func processLink(ctx context.Context, link string, db DB) {
 	if processedLinks[link] {
+		//msg := fmt.Sprintf("Already processed %d link.", len(processedLinks))
+		//sendMessage("Finished", msg)
 		return
 	}
+	sendMessage("StartProcessingLink", link)
+
 	links, err := fetchLinksFromPage(ctx, link)
 	if err != nil {
 		log.Printf("Error fetching links from %s: %v", link, err)
 		return
 	}
 
-	title, content , err := fetchContentFromPage(ctx, link)
+	title, content, err := fetchContentFromPage(ctx, link)
 	if err != nil {
 		log.Printf("Error fetching content from %s: %v", link, err)
 		return
@@ -75,11 +121,14 @@ func processLink(ctx context.Context, link string, db DB) {
 	}
 
 	// Mark the link as processed
-	insertUrlErr := db.InsertLink(Link{URL: link, DateCreated: time.Now(), LastProcessed: time.Now() })
+	insertUrlErr := db.InsertLink(Link{URL: link, DateCreated: time.Now(), LastProcessed: time.Now()})
 	if insertUrlErr != nil {
 		log.Printf("Error saving link %s: %v", link, err)
 		return
 	}
+	message := fmt.Sprintf(`processed %s`, link)
+	sendMessage("FinishedProcessingLink", message)
+	// data := fmt.Sprintf(`{"code": "%s", "message": "%s"}`, "ProcessedLink", message)
 	processedLinks[link] = true
 
 	// Process child links
@@ -117,5 +166,27 @@ func fetchContentFromPage(ctx context.Context, urlStr string) (string, string, e
 		chromedp.Evaluate(`document.body.innerText`, &content),
 	)
 
-	return title, content , err
+	return title, content, err
+}
+
+func eventsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	// Listen for client disconnection to stop sending events
+	ctx := r.Context()
+	// Send data to the client
+	go func() {
+		for {
+			select {
+			case data := <-dataCh:
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				w.(http.Flusher).Flush()
+			case <-ctx.Done():
+				return
+
+			}
+		}
+	}()
 }

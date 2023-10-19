@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func home() templ.Component {
+func header() templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -22,33 +22,43 @@ func home() templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<html>")
+		_, err = templBuffer.WriteString("<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
 		if err != nil {
 			return err
 		}
-		err = header().Render(ctx, templBuffer)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("<body><div class=\"flex justify-center\"><div class=\"bg-blue-500 text-white p-4\"><h1 class=\"text-4xl font-medium p-5\">")
-		if err != nil {
-			return err
-		}
-		var_2 := `WOAH`
+		var_2 := `Your Website Title`
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1><form hx-post=\"/start-site\" hx-swap=\"outerHTML\"><label for=\"websiteUrl\">")
+		_, err = templBuffer.WriteString("</title><!--")
 		if err != nil {
 			return err
 		}
-		var_3 := `Website Url:`
+		var_3 := ` HTMX reference `
 		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"websiteUrl\" name=\"websiteUrl\" required><input type=\"submit\" value=\"Submit\"></form></div></div></body></html>")
+		_, err = templBuffer.WriteString("--><script src=\"https://unpkg.com/htmx.org@1.9.6\">")
+		if err != nil {
+			return err
+		}
+		var_4 := ``
+		_, err = templBuffer.WriteString(var_4)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</script><script src=\"https://unpkg.com/htmx.org/dist/ext/sse.js\">")
+		if err != nil {
+			return err
+		}
+		var_5 := ``
+		_, err = templBuffer.WriteString(var_5)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</script></head>")
 		if err != nil {
 			return err
 		}

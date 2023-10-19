@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func home() templ.Component {
+func task(siteUrl string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -22,7 +22,7 @@ func home() templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<html>")
+		_, err = templBuffer.WriteString("<html lang=\"en\">")
 		if err != nil {
 			return err
 		}
@@ -30,25 +30,28 @@ func home() templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<body><div class=\"flex justify-center\"><div class=\"bg-blue-500 text-white p-4\"><h1 class=\"text-4xl font-medium p-5\">")
+		_, err = templBuffer.WriteString("<body><div hx-get=\"/site/:siteUrl\" hx-trigger=\"load\">")
 		if err != nil {
 			return err
 		}
-		var_2 := `WOAH`
-		_, err = templBuffer.WriteString(var_2)
+		var var_2 string = siteUrl
+		_, err = templBuffer.WriteString(templ.EscapeString(var_2))
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1><form hx-post=\"/start-site\" hx-swap=\"outerHTML\"><label for=\"websiteUrl\">")
+		_, err = templBuffer.WriteString(" <img alt=\"Result loading...\" class=\"htmx-indicator\" width=\"150\" src=\"/img/bars.svg\"></div><!--")
 		if err != nil {
 			return err
 		}
-		var_3 := `Website Url:`
+		var_3 := `<div hx-ext="sse" sse-connect="/progress" sse-swap="message">
+        Contents of this box will be updated in real time
+        with every SSE message received from the chatroom.
+    </div>`
 		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"websiteUrl\" name=\"websiteUrl\" required><input type=\"submit\" value=\"Submit\"></form></div></div></body></html>")
+		_, err = templBuffer.WriteString("--></body></html>")
 		if err != nil {
 			return err
 		}
