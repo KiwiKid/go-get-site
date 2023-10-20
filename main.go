@@ -6,11 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/a-h/templ"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
@@ -24,17 +26,19 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	//defer cancel()
 
-	ctx, cancel = chromedp.NewContext(ctx)
-	defer cancel()
+	r := mux.NewRouter()
 
-	homeComp := home()
+	//ctx, cancel = chromedp.NewContext(ctx)
+	//defer cancel()
 
-	http.Handle("/", templ.Handler(homeComp))
+	http.Handle("/", presentHome())
 
-	http.HandleFunc("/start-site", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/site/{websiteURL}", presentPages())
+
+	http.HandleFunc("/site/new", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Only POST requests are allowed", http.StatusMethodNotAllowed)
 			return
@@ -52,13 +56,6 @@ func main() {
 			http.Error(w, "websiteUrl is required", http.StatusBadRequest)
 			return
 		}
-
-		//connStr := os.Getenv("DB_CONN_STR")
-
-		//db, err := NewDB(connStr)
-		//if err != nil {
-		//	panic(err)
-		//}
 
 		taskComp := task(websiteUrl)
 
@@ -84,6 +81,88 @@ func main() {
 	//	panic(err)
 	//}
 	// processLink(ctx, url, *db)
+}
+
+func presentHome() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+		websites, pageErr := db.ListWebsites()
+		if err != nil {
+			panic(pageErr)
+		}
+		homeComp := home(websites)
+
+		templ.Handler(homeComp).ServeHTTP(w, r)
+	}
+}
+
+func presentPages() http.HandlerFunc {
+	db, err := NewDB()
+	if err != nil {
+		panic(err)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		websiteURL := vars["websiteURL"]
+
+		if r.Method == http.MethodPost {
+			// Logic for POST request to add a website
+			// This is where you would read the request body, parse any required data, and add the website to your database
+			// For example:
+			// 1. Parse the request body.
+			// 2. Validate the data.
+			// 3. Insert the website into the database.
+			// 4. Send a response to the client.
+
+			db, err := NewDB()
+			if err != nil {
+				http.Error(w, "Failed to connect to the database", http.StatusInternalServerError)
+				return
+			}
+
+			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteURL})
+			if insertErr != nil {
+				log.Printf("Error saving page %s: %v", websiteURL, err)
+				return
+			}
+
+			w.WriteHeader(http.StatusCreated) // 201 Created status
+			fmt.Fprintf(w, "Website %s added successfully", websiteURL)
+		}
+
+		// The previous logic for GET request
+		pageStr := r.URL.Query().Get("page")
+		page, err := strconv.Atoi(pageStr)
+		if err != nil || page <= 0 {
+			page = 1 // default or fallback value
+		}
+
+		pageSizeStr := r.URL.Query().Get("pageSize")
+		pageSize, err := strconv.Atoi(pageSizeStr)
+		if err != nil || pageSize <= 0 {
+			pageSize = 10 // default or fallback value
+		}
+
+		fmt.Fprintf(w, "Website URL: %s", websiteURL)
+
+		/*	db, err := NewDB()
+			if err != nil {
+				panic(err)
+			}*/
+
+		pagesList, pageErr := db.ListPages(websiteURL, page, pageSize)
+		if err != nil {
+			panic(pageErr)
+		}
+		pagesComp := pages(pagesList)
+
+		templ.Handler(pagesComp).ServeHTTP(w, r)
+
+	}
 }
 
 func sendMessage(code string, messageStr string) {

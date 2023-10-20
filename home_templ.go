@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func home() templ.Component {
+func home(websiteUrls []string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -39,16 +39,53 @@ func home() templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1><form hx-post=\"/start-site\" hx-swap=\"outerHTML\"><label for=\"websiteUrl\">")
+		_, err = templBuffer.WriteString("</h1> ")
 		if err != nil {
 			return err
 		}
-		var_3 := `Website Url:`
+		var_3 := `A new site url:`
 		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"websiteUrl\" name=\"websiteUrl\" required><input type=\"submit\" value=\"Submit\"></form></div></div></body></html>")
+		_, err = templBuffer.WriteString(" <form hx-post=\"/site-new\" hx-swap=\"outerHTML\"><label for=\"websiteUrl\">")
+		if err != nil {
+			return err
+		}
+		var_4 := `Website Url:`
+		_, err = templBuffer.WriteString(var_4)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"websiteUrl\" name=\"websiteUrl\" required><input type=\"submit\" value=\"Submit\">")
+		if err != nil {
+			return err
+		}
+		for _, url := range websiteUrls {
+			_, err = templBuffer.WriteString("<li><a href=\"")
+			if err != nil {
+				return err
+			}
+			var var_5 templ.SafeURL = templ.SafeURL(url)
+			_, err = templBuffer.WriteString(templ.EscapeString(string(var_5)))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\">")
+			if err != nil {
+				return err
+			}
+			var var_6 string = url
+			_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</a></li>")
+			if err != nil {
+				return err
+			}
+		}
+		_, err = templBuffer.WriteString("</form></div></div></body></html>")
 		if err != nil {
 			return err
 		}

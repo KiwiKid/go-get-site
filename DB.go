@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -22,9 +23,9 @@ func (Page) TableName() string {
 }
 
 type Link struct {
-	ID          uint      `gorm:"primary_key"`
-	URL         string    `gorm:"size:255"`
-	DateCreated time.Time `gorm:"type:timestamp"`
+	ID            uint      `gorm:"primary_key"`
+	URL           string    `gorm:"size:255"`
+	DateCreated   time.Time `gorm:"type:timestamp"`
 	LastProcessed time.Time `gorm:"type:timestamp"`
 }
 
@@ -37,7 +38,8 @@ type DB struct {
 }
 
 // NewDB creates a new DB instance with GORM
-func NewDB(connStr string) (*DB, error) {
+func NewDB() (*DB, error) {
+	connStr := os.Getenv("DB_CONN_STR")
 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
 		return nil, err
@@ -46,7 +48,7 @@ func NewDB(connStr string) (*DB, error) {
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
 	db.AutoMigrate(&Page{})
 	db.AutoMigrate(&Link{})
-	
+
 	return &DB{conn: db}, nil
 }
 
@@ -55,7 +57,34 @@ func (db *DB) InsertPage(page Page) error {
 	return result.Error
 }
 
+func (db *DB) ListWebsites() ([]string, error) {
+	// Note the struct tag to indicate the column name
+	var websites []struct {
+		WebsiteUrl string `gorm:"column:url"`
+	}
 
+	result := db.conn.Table("pages").Select("distinct(url)").Scan(&websites)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	websiteUrls := make([]string, len(websites))
+	for i, website := range websites {
+		websiteUrls[i] = website.WebsiteUrl
+	}
+
+	return websiteUrls, nil
+}
+
+func (db *DB) ListPages(websiteUrl string, page int, pageSize int) ([]Page, error) {
+	var pages []Page
+	offset := (page - 1) * pageSize
+	result := db.conn.Where("URL = ?", websiteUrl).Offset(offset).Limit(pageSize).Find(&pages)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return pages, nil
+}
 
 func (db *DB) InsertLink(link Link) error {
 	result := db.conn.Create(&link)

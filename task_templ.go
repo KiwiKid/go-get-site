@@ -30,7 +30,15 @@ func task(siteUrl string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<body><div hx-get=\"/site/:siteUrl\" hx-trigger=\"load\">")
+		_, err = templBuffer.WriteString("<body><div hx-get=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(siteUrl))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" hx-trigger=\"load\">")
 		if err != nil {
 			return err
 		}

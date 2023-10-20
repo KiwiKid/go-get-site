@@ -1,0 +1,24 @@
+package main
+templ home(websiteUrls []string) {
+  <html>
+  @header()
+  <body>
+  <div class="flex justify-center">
+  <div class="bg-blue-500 text-white p-4">
+    <h1 class="text-4xl font-medium p-5">WOAH</h1>
+    A new site url:
+    <form hx-post="/site-new" hx-swap="outerHTML">
+        <label for="websiteUrl">Website Url:</label>
+        <input type="text" id="websiteUrl" name="websiteUrl" required/>
+        <input type="submit" value="Submit"/>
+   
+     for _, url := range websiteUrls {
+        <li><a href={ templ.SafeURL(url) }>{url}</a></li>
+      }
+    </form>
+  </div>
+  </div>
+  </body>
+  </html>
+}
+
