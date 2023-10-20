@@ -5,7 +5,7 @@ templ home(websiteUrls []string) {
   <body>
   <div  id="container-div" class="flex justify-center">
   <div class="bg-blue-500 text-white p-4">
-    <h1 class="text-4xl font-medium p-5">WOAH</h1>
+    <h1 class="text-4xl font-medium p-5">HOME</h1>
     A new site url:
     <form hx-post="/" hx-swap="outerHTML" hx-target="#container-div">
         <label for="websiteUrl">Website Url:</label>
@@ -13,7 +13,7 @@ templ home(websiteUrls []string) {
         <input type="submit" value="Submit"/>
    
      for _, url := range websiteUrls {
-        <li><a href={ templ.SafeURL(url) }>{url}</a></li>
+        <li><a href={ templ.SafeURL("/site/" + url) }>{url}</a></li>
       }
     </form>
   </div>

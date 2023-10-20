@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func pages(pages []Page) templ.Component {
+func pages(pages []Page, websiteUrl string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -22,7 +22,16 @@ func pages(pages []Page) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div>")
+		_, err = templBuffer.WriteString("<div><h1>")
+		if err != nil {
+			return err
+		}
+		var var_2 string = websiteUrl
+		_, err = templBuffer.WriteString(templ.EscapeString(var_2))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</h1>")
 		if err != nil {
 			return err
 		}
@@ -31,8 +40,8 @@ func pages(pages []Page) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_2 string = item.Title
-			_, err = templBuffer.WriteString(templ.EscapeString(var_2))
+			var var_3 string = item.Title
+			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
 			if err != nil {
 				return err
 			}

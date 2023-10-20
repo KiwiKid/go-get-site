@@ -82,7 +82,8 @@ func (db *DB) ListWebsites() ([]string, error) {
 func (db *DB) ListPages(websiteUrl string, page int, pageSize int) ([]Page, error) {
 	var pages []Page
 	offset := (page - 1) * pageSize
-	result := db.conn.Where("URL = ?", websiteUrl).Offset(offset).Limit(pageSize).Find(&pages)
+	wildcardUrl := "" + websiteUrl + "%"
+	result := db.conn.Where("URL LIKE ?", wildcardUrl).Offset(offset).Limit(pageSize).Find(&pages)
 	if result.Error != nil {
 		return nil, result.Error
 	}

@@ -1,7 +1,9 @@
 package main
 
-templ pages(pages []Page){
+templ pages(pages []Page, websiteUrl string){
     <div>
+        <h1 class="text-4xl font-medium p-5">PAGES</h1>
+    <h1>{websiteUrl}</h1>
     for _, item := range pages {
         <div>
             <div>{ item.Title }</div>

@@ -66,7 +66,7 @@ func home(websiteUrls []string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_5 templ.SafeURL = templ.SafeURL(url)
+			var var_5 templ.SafeURL = templ.SafeURL("/site/" + url)
 			_, err = templBuffer.WriteString(templ.EscapeString(string(var_5)))
 			if err != nil {
 				return err

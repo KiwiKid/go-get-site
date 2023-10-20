@@ -41,15 +41,25 @@ func main() {
 
 	//ctx, cancel = chromedp.NewContext(ctx)
 	//defer cancel()
+	r.HandleFunc("/site/{websiteURL}", presentPages()).Methods("GET")
 
-	http.Handle("/", presentHome())
+	r.Handle("/", presentHome()).Methods("GET", "POST")
 
-	r.HandleFunc("/site/{websiteURL}", presentPages())
+	r.HandleFunc("/progress", eventsHandler)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("Received request: %s %s", r.Method, r.URL.Path)
+			next.ServeHTTP(w, r)
+		})
+	})
 
-	http.HandleFunc("/progress", eventsHandler)
+	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Catch-all route triggered")
+		fmt.Fprint(w, "Catch-all route")
+	})
 
 	fmt.Println("Listening on :3000")
-	if err := http.ListenAndServe(":3000", nil); err != nil {
+	if err := http.ListenAndServe(":3000", r); err != nil {
 		log.Printf("error listening: %v", err)
 	}
 
@@ -111,6 +121,7 @@ func presentHome() http.HandlerFunc {
 }
 
 func presentPages() http.HandlerFunc {
+	log.Print("presentPages")
 	db, err := NewDB()
 	if err != nil {
 		panic(err)
@@ -158,14 +169,16 @@ func presentPages() http.HandlerFunc {
 				panic(err)
 			}*/
 
+		log.Printf("ListPages %s %d %d", websiteURL, page, pageSize)
+
 		pagesList, pageErr := db.ListPages(websiteURL, page, pageSize)
 		if err != nil {
 			panic(pageErr)
 		}
-		pagesComp := pages(pagesList)
+		pagesComp := pages(pagesList, websiteURL)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
-
+		return
 	}
 }
 
