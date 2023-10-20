@@ -30,7 +30,7 @@ func home(websiteUrls []string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<body><div class=\"flex justify-center\"><div class=\"bg-blue-500 text-white p-4\"><h1 class=\"text-4xl font-medium p-5\">")
+		_, err = templBuffer.WriteString("<body><div id=\"container-div\" class=\"flex justify-center\"><div class=\"bg-blue-500 text-white p-4\"><h1 class=\"text-4xl font-medium p-5\">")
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ func home(websiteUrls []string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(" <form hx-post=\"/site-new\" hx-swap=\"outerHTML\"><label for=\"websiteUrl\">")
+		_, err = templBuffer.WriteString(" <form hx-post=\"/\" hx-swap=\"outerHTML\" hx-target=\"#container-div\"><label for=\"websiteUrl\">")
 		if err != nil {
 			return err
 		}

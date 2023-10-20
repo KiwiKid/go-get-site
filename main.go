@@ -26,6 +26,14 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	db, err := NewDB()
+	if err != nil {
+		panic(err)
+	}
+
+	db.Migrate()
+
 	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	//defer cancel()
 
@@ -37,32 +45,6 @@ func main() {
 	http.Handle("/", presentHome())
 
 	r.HandleFunc("/site/{websiteURL}", presentPages())
-
-	http.HandleFunc("/site/new", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Only POST requests are allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Parse the form data to retrieve 'websiteUrl'
-		err := r.ParseForm()
-		if err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
-			return
-		}
-
-		websiteUrl := r.FormValue("websiteUrl")
-		if websiteUrl == "" {
-			http.Error(w, "websiteUrl is required", http.StatusBadRequest)
-			return
-		}
-
-		taskComp := task(websiteUrl)
-
-		// Return the templ.Handler(taskComp)
-		templ.Handler(taskComp).ServeHTTP(w, r)
-
-	})
 
 	http.HandleFunc("/progress", eventsHandler)
 
@@ -84,11 +66,40 @@ func main() {
 }
 
 func presentHome() http.HandlerFunc {
+	log.Print("PresentHome")
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Print("PresentHome - NewDB")
 		db, err := NewDB()
 		if err != nil {
 			panic(err)
 		}
+
+		if r.Method == http.MethodPost {
+			log.Print("PresentHome - NewDB MethodPost")
+			// Parse the form data to retrieve 'websiteUrl'
+			err := r.ParseForm()
+			if err != nil {
+				http.Error(w, "Failed to parse form", http.StatusBadRequest)
+				return
+			}
+
+			websiteUrl := r.FormValue("websiteUrl")
+			if websiteUrl == "" {
+				http.Error(w, "websiteUrl is required", http.StatusBadRequest)
+				return
+			}
+
+			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteUrl, IsSeedUrl: true})
+			if insertErr != nil {
+				log.Printf("Error saving page %s: %v", websiteUrl, err)
+				http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
+				return
+			}
+			log.Print("INSERT DATES MethodPost")
+
+		}
+
 		websites, pageErr := db.ListWebsites()
 		if err != nil {
 			panic(pageErr)
@@ -110,41 +121,34 @@ func presentPages() http.HandlerFunc {
 		websiteURL := vars["websiteURL"]
 
 		if r.Method == http.MethodPost {
-			// Logic for POST request to add a website
-			// This is where you would read the request body, parse any required data, and add the website to your database
-			// For example:
-			// 1. Parse the request body.
-			// 2. Validate the data.
-			// 3. Insert the website into the database.
-			// 4. Send a response to the client.
-
 			db, err := NewDB()
 			if err != nil {
 				http.Error(w, "Failed to connect to the database", http.StatusInternalServerError)
 				return
 			}
 
-			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteURL})
+			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteURL, IsSeedUrl: true})
 			if insertErr != nil {
 				log.Printf("Error saving page %s: %v", websiteURL, err)
+				http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
 				return
 			}
+			log.Printf("saved page")
 
 			w.WriteHeader(http.StatusCreated) // 201 Created status
 			fmt.Fprintf(w, "Website %s added successfully", websiteURL)
 		}
 
-		// The previous logic for GET request
 		pageStr := r.URL.Query().Get("page")
 		page, err := strconv.Atoi(pageStr)
 		if err != nil || page <= 0 {
-			page = 1 // default or fallback value
+			page = 1
 		}
 
 		pageSizeStr := r.URL.Query().Get("pageSize")
 		pageSize, err := strconv.Atoi(pageSizeStr)
 		if err != nil || pageSize <= 0 {
-			pageSize = 10 // default or fallback value
+			pageSize = 10
 		}
 
 		fmt.Fprintf(w, "Website URL: %s", websiteURL)
