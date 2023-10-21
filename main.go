@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -34,14 +35,14 @@ func main() {
 
 	db.Migrate()
 
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	//defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 
 	r := mux.NewRouter()
 
-	//ctx, cancel = chromedp.NewContext(ctx)
-	//defer cancel()
-	r.HandleFunc("/site/{websiteURL}", presentPages()).Methods("GET", "POST")
+	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
+	r.HandleFunc("/site/{websiteURL}", presentPages(ctx)).Methods("GET", "POST")
 
 	r.Handle("/", presentHome()).Methods("GET", "POST")
 
@@ -102,7 +103,7 @@ func presentHome() http.HandlerFunc {
 
 			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteUrl, IsSeedUrl: true})
 			if insertErr != nil {
-				log.Printf("Error saving page %s: %v", websiteUrl, err)
+				log.Printf("Error saving page %s: %v", websiteUrl, insertErr)
 				http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
 				return
 			}
@@ -120,7 +121,7 @@ func presentHome() http.HandlerFunc {
 	}
 }
 
-func presentPages() http.HandlerFunc {
+func presentPages(ctx context.Context) http.HandlerFunc {
 	log.Print("presentPages")
 	db, err := NewDB()
 	if err != nil {
@@ -129,25 +130,26 @@ func presentPages() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		websiteURL := vars["websiteURL"]
+		websiteURLRaw := vars["websiteURL"]
+		websiteURL, err := url.QueryUnescape(websiteURLRaw)
+		if err != nil {
+			http.Error(w, "Failed to parse websiteURL", http.StatusInternalServerError)
+			return
+		}
 
 		if r.Method == http.MethodPost {
-			/*db, err := NewDB()
+			log.Print("presentPages - POST")
+			db, err := NewDB()
 			if err != nil {
 				http.Error(w, "Failed to connect to the database", http.StatusInternalServerError)
 				return
 			}
-
-			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteURL, IsSeedUrl: true})
-			if insertErr != nil {
-				log.Printf("Error saving page %s: %v", websiteURL, err)
-				http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
-				return
-			}
+			log.Print("presentPages - POST 2")
+			processLink(ctx, websiteURL, *db)
+			log.Print("presentPages - POST 3")
 			log.Printf("saved page")
 
 			w.WriteHeader(http.StatusCreated) // 201 Created status
-			fmt.Fprintf(w, "Website %s added successfully", websiteURL)*/
 		}
 
 		pageStr := r.URL.Query().Get("page")
@@ -185,12 +187,20 @@ func sendMessage(code string, messageStr string) {
 }
 
 func processLink(ctx context.Context, link string, db DB) {
-	if processedLinks[link] {
-		//msg := fmt.Sprintf("Already processed %d link.", len(processedLinks))
-		//sendMessage("Finished", msg)
+	log.Print("StartProcessingLink", link)
+
+	existingLink, err := db.GetExistingPage(link)
+	if err != nil {
+		log.Printf("Error GetLink from %s: %v", link, err)
 		return
 	}
-	sendMessage("StartProcessingLink", link)
+
+	if existingLink {
+		log.Printf("Already processed %d link.", len(processedLinks))
+		return
+	}
+
+	log.Print("StartProcessingLink 1", link)
 
 	links, err := fetchLinksFromPage(ctx, link)
 	if err != nil {
@@ -205,7 +215,7 @@ func processLink(ctx context.Context, link string, db DB) {
 	}
 
 	fmt.Println("Content from:", link)
-	fmt.Println(content)
+	fmt.Println(links)
 
 	insertErr := db.InsertPage(Page{Title: title, Content: content, URL: link})
 	if insertErr != nil {
@@ -213,19 +223,19 @@ func processLink(ctx context.Context, link string, db DB) {
 		return
 	}
 
-	// Mark the link as processed
-	insertUrlErr := db.InsertLink(Link{URL: link, DateCreated: time.Now(), LastProcessed: time.Now()})
-	if insertUrlErr != nil {
-		log.Printf("Error saving link %s: %v", link, err)
-		return
-	}
 	message := fmt.Sprintf(`processed %s`, link)
-	sendMessage("FinishedProcessingLink", message)
+	fmt.Println("FinishedProcessingLink", message)
 	// data := fmt.Sprintf(`{"code": "%s", "message": "%s"}`, "ProcessedLink", message)
 	processedLinks[link] = true
 
 	// Process child links
 	for _, l := range links {
+
+		insertErr := db.InsertLink(Link{sourceURL: link, URL: l, DateCreated: time.Now(), LastProcessed: time.Now()})
+		if insertErr != nil {
+			log.Printf("Error saving link %s: %v", link, err)
+			return
+		}
 		processLink(ctx, l, db)
 	}
 }

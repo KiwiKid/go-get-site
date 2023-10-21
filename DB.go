@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -14,6 +15,7 @@ type Page struct {
 	Keywords    string    `gorm:"size:255"`
 	Content     string    `gorm:"type:text"`
 	URL         string    `gorm:"size:255"`
+	Links       []string  `gorm:"type:text[]"`
 	IsSeedUrl   bool      `gorm:"type:boolean;default:false;not null"`
 	DateCreated time.Time `gorm:"type:timestamp"`
 	DateUpdated time.Time `gorm:"type:timestamp"`
@@ -25,6 +27,7 @@ func (Page) TableName() string {
 
 type Link struct {
 	ID            uint      `gorm:"primary_key"`
+	sourceURL     string    `gorm:"size:255"`
 	URL           string    `gorm:"size:255"`
 	DateCreated   time.Time `gorm:"type:timestamp"`
 	LastProcessed time.Time `gorm:"type:timestamp"`
@@ -71,7 +74,11 @@ func (db *DB) Migrate() {
 func (db *DB) InsertPage(page Page) error {
 	page.DateCreated = time.Now()
 	result := db.conn.Create(&page)
-	return result.Error
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
 }
 
 func (db *DB) UpdatePage(page Page) error {
@@ -97,6 +104,16 @@ func (db *DB) ListWebsites() ([]string, error) {
 	}
 
 	return websiteUrls, nil
+}
+
+func (db *DB) GetExistingPage(url string) (bool, error) {
+	var count int64
+	result := db.conn.Table("pgml.page").Where("url = ?", url).Count(&count)
+	if result.Error != nil {
+		return true, result.Error
+	}
+
+	return count > 0, nil
 }
 
 func (db *DB) ListPages(websiteUrl string, page int, pageSize int) ([]Page, error) {

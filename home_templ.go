@@ -42,26 +42,16 @@ func home(websiteUrls []string) templ.Component {
 		if err != nil {
 			return err
 		}
-		for _, url := range websiteUrls {
-			_, err = templBuffer.WriteString("<li class=\"mb-2\"><li><a href=\"")
+		for _, webUrl := range websiteUrls {
+			_, err = templBuffer.WriteString("<li class=\"mb-2\">")
 			if err != nil {
 				return err
 			}
-			var var_2 templ.SafeURL = templ.SafeURL("/site/" + url)
-			_, err = templBuffer.WriteString(templ.EscapeString(string(var_2)))
+			err = linkGenerator(AHref, webUrl, webUrl).Render(ctx, templBuffer)
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\" class=\"text-blue-500 hover:underline\">")
-			if err != nil {
-				return err
-			}
-			var var_3 string = url
-			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</a></li></li>")
+			_, err = templBuffer.WriteString("</li>")
 			if err != nil {
 				return err
 			}
@@ -70,8 +60,8 @@ func home(websiteUrls []string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_4 := `A new site url:`
-		_, err = templBuffer.WriteString(var_4)
+		var_2 := `A new site url:`
+		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
 		}
@@ -79,12 +69,12 @@ func home(websiteUrls []string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_5 := `Website Url:`
-		_, err = templBuffer.WriteString(var_5)
+		var_3 := `Website Url:`
+		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"websiteUrl\" name=\"websiteUrl\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></main></body></html>")
+		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"websiteUrl\" name=\"websiteUrl\" pattern=\"^https?://.*\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></main></body></html>")
 		if err != nil {
 			return err
 		}
