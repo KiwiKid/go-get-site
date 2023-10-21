@@ -186,57 +186,52 @@ func sendMessage(code string, messageStr string) {
 	dataCh <- data
 }
 
-func processLink(ctx context.Context, link string, db DB) {
-	log.Print("StartProcessingLink", link)
+func processLink(ctx context.Context, baseLink string, db DB) {
+	log.Print("StartProcessingLink", baseLink)
 
-	existingLink, err := db.GetExistingPage(link)
+	linksToProcess, err := db.GetUnprocessedLinks(baseLink, 20)
 	if err != nil {
-		log.Printf("Error GetLink from %s: %v", link, err)
+		log.Printf("Error GetLink from %s: %v", baseLink, err)
 		return
 	}
 
-	if existingLink {
-		log.Printf("Already processed %d link.", len(processedLinks))
+	if len(linksToProcess) == 0 {
+		log.Printf("Already processed %s link.", baseLink)
 		return
 	}
 
-	log.Print("StartProcessingLink 1", link)
-
-	links, err := fetchLinksFromPage(ctx, link)
-	if err != nil {
-		log.Printf("Error fetching links from %s: %v", link, err)
-		return
-	}
-
-	title, content, err := fetchContentFromPage(ctx, link)
-	if err != nil {
-		log.Printf("Error fetching content from %s: %v", link, err)
-		return
-	}
-
-	fmt.Println("Content from:", link)
-	fmt.Println(links)
-
-	insertErr := db.InsertPage(Page{Title: title, Content: content, URL: link})
-	if insertErr != nil {
-		log.Printf("Error saving page %s: %v", link, err)
-		return
-	}
-
-	message := fmt.Sprintf(`processed %s`, link)
-	fmt.Println("FinishedProcessingLink", message)
-	// data := fmt.Sprintf(`{"code": "%s", "message": "%s"}`, "ProcessedLink", message)
-	processedLinks[link] = true
-
-	// Process child links
-	for _, l := range links {
-
-		insertErr := db.InsertLink(Link{sourceURL: link, URL: l, DateCreated: time.Now(), LastProcessed: time.Now()})
-		if insertErr != nil {
-			log.Printf("Error saving link %s: %v", link, err)
+	for _, link := range linksToProcess {
+		links, err := fetchLinksFromPage(ctx, link.URL)
+		if err != nil {
+			log.Printf("Error fetching links from %s: %v", link, err)
 			return
 		}
-		processLink(ctx, l, db)
+
+		title, content, err := fetchContentFromPage(ctx, link.URL)
+		if err != nil {
+			log.Printf("Error fetching content from %s: %v", link, err)
+			return
+		}
+
+		insertErr := db.InsertPage(Page{Title: title, Content: content, URL: link.URL})
+		if insertErr != nil {
+			log.Printf("Error saving page %s: %v", link, err)
+			return
+		}
+
+		message := fmt.Sprintf(`processed %s`, link)
+		fmt.Println("FinishedProcessingLink", message)
+
+		// Process child links
+		for _, l := range links {
+
+			insertErr := db.InsertLink(Link{sourceURL: baseLink, URL: l, DateCreated: time.Now(), LastProcessed: time.Now()})
+			if insertErr != nil {
+				log.Printf("Error saving link %s: %v", link, err)
+				return
+			}
+			//processLink(ctx, l, db)
+		}
 	}
 }
 

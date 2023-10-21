@@ -106,14 +106,14 @@ func (db *DB) ListWebsites() ([]string, error) {
 	return websiteUrls, nil
 }
 
-func (db *DB) GetExistingPage(url string) (bool, error) {
-	var count int64
-	result := db.conn.Table("pgml.page").Where("url = ?", url).Count(&count)
+func (db *DB) GetUnprocessedLinks(url string, limit int) ([]Link, error) {
+	var links []Link
+	result := db.conn.Table("pgml.link").Joins("LEFT JOIN pages ON pages.url = link.url").Where("url = ?", url).Where("pages.url IS NULL").Limit(limit).Find(&links)
 	if result.Error != nil {
-		return true, result.Error
+		return nil, result.Error
 	}
 
-	return count > 0, nil
+	return links, nil
 }
 
 func (db *DB) ListPages(websiteUrl string, page int, pageSize int) ([]Page, error) {
