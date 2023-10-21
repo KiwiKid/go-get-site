@@ -53,10 +53,30 @@ func (db *DB) Migrate() {
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
 	db.conn.AutoMigrate(&Page{})
 	db.conn.AutoMigrate(&Link{})
+
+	// Check if the index exists
+	var count int64
+	db.conn.Raw(`
+        SELECT COUNT(*) 
+        FROM pg_indexes 
+        WHERE tablename = ? 
+        AND indexname = ?
+	`, "pgml.page", "idx_website_url").Scan(&count)
+
+	if count == 0 {
+		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url)")
+	}
 }
 
 func (db *DB) InsertPage(page Page) error {
+	page.DateCreated = time.Now()
 	result := db.conn.Create(&page)
+	return result.Error
+}
+
+func (db *DB) UpdatePage(page Page) error {
+	page.DateUpdated = time.Now()
+	result := db.conn.Model(&page).Updates(page)
 	return result.Error
 }
 

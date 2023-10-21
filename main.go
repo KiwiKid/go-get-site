@@ -41,7 +41,7 @@ func main() {
 
 	//ctx, cancel = chromedp.NewContext(ctx)
 	//defer cancel()
-	r.HandleFunc("/site/{websiteURL}", presentPages()).Methods("GET")
+	r.HandleFunc("/site/{websiteURL}", presentPages()).Methods("GET", "POST")
 
 	r.Handle("/", presentHome()).Methods("GET", "POST")
 
@@ -132,7 +132,7 @@ func presentPages() http.HandlerFunc {
 		websiteURL := vars["websiteURL"]
 
 		if r.Method == http.MethodPost {
-			db, err := NewDB()
+			/*db, err := NewDB()
 			if err != nil {
 				http.Error(w, "Failed to connect to the database", http.StatusInternalServerError)
 				return
@@ -147,7 +147,7 @@ func presentPages() http.HandlerFunc {
 			log.Printf("saved page")
 
 			w.WriteHeader(http.StatusCreated) // 201 Created status
-			fmt.Fprintf(w, "Website %s added successfully", websiteURL)
+			fmt.Fprintf(w, "Website %s added successfully", websiteURL)*/
 		}
 
 		pageStr := r.URL.Query().Get("page")
@@ -162,8 +162,6 @@ func presentPages() http.HandlerFunc {
 			pageSize = 10
 		}
 
-		fmt.Fprintf(w, "Website URL: %s", websiteURL)
-
 		/*	db, err := NewDB()
 			if err != nil {
 				panic(err)
@@ -172,13 +170,12 @@ func presentPages() http.HandlerFunc {
 		log.Printf("ListPages %s %d %d", websiteURL, page, pageSize)
 
 		pagesList, pageErr := db.ListPages(websiteURL, page, pageSize)
-		if err != nil {
+		if pageErr != nil {
 			panic(pageErr)
 		}
 		pagesComp := pages(pagesList, websiteURL)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
-		return
 	}
 }
 

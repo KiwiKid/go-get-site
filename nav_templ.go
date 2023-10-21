@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func header() templ.Component {
+func nav() templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -22,52 +22,54 @@ func header() templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
+		_, err = templBuffer.WriteString("<div class=\"bg-blue-600 p-4\"><div class=\"container mx-auto\"><nav class=\"flex items-center justify-between\"><!--")
 		if err != nil {
 			return err
 		}
-		var_2 := `Your Website Title`
+		var_2 := ` Logo or Brand Name `
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</title><!--")
+		_, err = templBuffer.WriteString("--><a href=\"/\" class=\"text-white text-2xl font-bold\">")
 		if err != nil {
 			return err
 		}
-		var_3 := ` HTMX reference `
+		var_3 := `BrandName`
 		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("--><script src=\"https://unpkg.com/htmx.org@1.9.6\">")
+		_, err = templBuffer.WriteString("</a><!--")
 		if err != nil {
 			return err
 		}
-		var_4 := ``
+		var_4 := ` Navigation Links `
 		_, err = templBuffer.WriteString(var_4)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</script><script src=\"https://unpkg.com/htmx.org/dist/ext/sse.js\">")
+		_, err = templBuffer.WriteString("--><div class=\"flex space-x-4\"><a href=\"/\" class=\"text-white hover:text-blue-400\">")
 		if err != nil {
 			return err
 		}
-		var_5 := ``
+		var_5 := `Home`
 		_, err = templBuffer.WriteString(var_5)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</script><script src=\"https://cdn.tailwindcss.com\">")
+		_, err = templBuffer.WriteString("</a><!--")
 		if err != nil {
 			return err
 		}
-		var_6 := ``
+		var_6 := `  <a href="#" class="text-white hover:text-blue-400">About</a>
+                    <a href="#" class="text-white hover:text-blue-400">Services</a>
+                    <a href="#" class="text-white hover:text-blue-400">Contact</a>`
 		_, err = templBuffer.WriteString(var_6)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</script></head>")
+		_, err = templBuffer.WriteString("--></div></nav></div></div>")
 		if err != nil {
 			return err
 		}

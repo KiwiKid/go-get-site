@@ -1,13 +1,37 @@
 package main
+templ pages(pages []Page, websiteUrl string) {
+    <html>
+    @header()
+    <body class="bg-gray-100">
+        @nav()
+        <div class="container mx-auto mt-12 p-4">
+            <h1 class="text-4xl font-bold mb-6">PAGES</h1>
+            <h1 class="text-xl mb-4">{websiteUrl}</h1>
 
-templ pages(pages []Page, websiteUrl string){
-    <div>
-        <h1 class="text-4xl font-medium p-5">PAGES</h1>
-    <h1>{websiteUrl}</h1>
-    for _, item := range pages {
-        <div>
-            <div>{ item.Title }</div>
+            <!-- Flexbox header - Can be omitted if not required -->
+            <div class="flex mb-2 font-bold text-sm text-gray-600 border-b-2">
+                <div class="flex-1 p-2">URL</div>
+                <div class="flex-1 p-2">Keywords</div>
+                <div class="flex-1 p-2">Title</div>
+                <div class="flex-2 p-2">Content</div>
+                <div class="flex-1 p-2">Duplicate URL</div>
+            </div>
+
+            for _, item := range pages {
+            <div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
+                <div class="flex-1 p-2">{ item.URL }</div>
+                <div class="flex-1 p-2">{ item.Keywords }</div>
+                <div class="flex-1 p-2">{ item.Title }</div>
+                <div class="flex-2 p-2">
+                    <details>
+                        <summary class="cursor-pointer">View Content</summary>
+                        { item.Content }
+                    </details>
+                </div>
+                <div class="flex-1 p-2">{ item.URL }</div>
+            </div>
+            }
         </div>
-    }
-    </div>
+    </body>
+</html>
 }

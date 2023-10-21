@@ -30,62 +30,61 @@ func home(websiteUrls []string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<body><div id=\"container-div\" class=\"flex justify-center\"><div class=\"bg-blue-500 text-white p-4\"><h1 class=\"text-4xl font-medium p-5\">")
+		_, err = templBuffer.WriteString("<body id=\"container\">")
 		if err != nil {
 			return err
 		}
-		var_2 := `WOAH`
-		_, err = templBuffer.WriteString(var_2)
+		err = nav().Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1> ")
-		if err != nil {
-			return err
-		}
-		var_3 := `A new site url:`
-		_, err = templBuffer.WriteString(var_3)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(" <form hx-post=\"/\" hx-swap=\"outerHTML\" hx-target=\"#container-div\"><label for=\"websiteUrl\">")
-		if err != nil {
-			return err
-		}
-		var_4 := `Website Url:`
-		_, err = templBuffer.WriteString(var_4)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"websiteUrl\" name=\"websiteUrl\" required><input type=\"submit\" value=\"Submit\">")
+		_, err = templBuffer.WriteString("<main class=\"flex justify-center mt-6\"><div class=\"w-full max-w-2xl bg-white shadow rounded-lg p-6\"><ul>")
 		if err != nil {
 			return err
 		}
 		for _, url := range websiteUrls {
-			_, err = templBuffer.WriteString("<li><a href=\"")
+			_, err = templBuffer.WriteString("<li class=\"mb-2\"><li><a href=\"")
 			if err != nil {
 				return err
 			}
-			var var_5 templ.SafeURL = templ.SafeURL("/site/" + url)
-			_, err = templBuffer.WriteString(templ.EscapeString(string(var_5)))
+			var var_2 templ.SafeURL = templ.SafeURL("/site/" + url)
+			_, err = templBuffer.WriteString(templ.EscapeString(string(var_2)))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\">")
+			_, err = templBuffer.WriteString("\" class=\"text-blue-500 hover:underline\">")
 			if err != nil {
 				return err
 			}
-			var var_6 string = url
-			_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+			var var_3 string = url
+			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</a></li>")
+			_, err = templBuffer.WriteString("</a></li></li>")
 			if err != nil {
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString("</form></div></div></body></html>")
+		_, err = templBuffer.WriteString("</ul><div class=\"mt-8\"><div class=\"text-gray-700 font-bold mb-4\">")
+		if err != nil {
+			return err
+		}
+		var_4 := `A new site url:`
+		_, err = templBuffer.WriteString(var_4)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><form hx-post=\"/\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4\"><label for=\"websiteUrl\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_5 := `Website Url:`
+		_, err = templBuffer.WriteString(var_5)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"websiteUrl\" name=\"websiteUrl\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></main></body></html>")
 		if err != nil {
 			return err
 		}

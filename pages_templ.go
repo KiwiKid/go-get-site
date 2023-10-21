@@ -22,26 +22,150 @@ func pages(pages []Page, websiteUrl string) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div><h1>")
+		_, err = templBuffer.WriteString("<html>")
 		if err != nil {
 			return err
 		}
-		var var_2 string = websiteUrl
-		_, err = templBuffer.WriteString(templ.EscapeString(var_2))
+		err = header().Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1>")
+		_, err = templBuffer.WriteString("<body class=\"bg-gray-100\">")
+		if err != nil {
+			return err
+		}
+		err = nav().Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("<div class=\"container mx-auto mt-12 p-4\"><h1 class=\"text-4xl font-bold mb-6\">")
+		if err != nil {
+			return err
+		}
+		var_2 := `PAGES`
+		_, err = templBuffer.WriteString(var_2)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</h1><h1 class=\"text-xl mb-4\">")
+		if err != nil {
+			return err
+		}
+		var var_3 string = websiteUrl
+		_, err = templBuffer.WriteString(templ.EscapeString(var_3))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</h1><!--")
+		if err != nil {
+			return err
+		}
+		var_4 := ` Flexbox header - Can be omitted if not required `
+		_, err = templBuffer.WriteString(var_4)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("--><div class=\"flex mb-2 font-bold text-sm text-gray-600 border-b-2\"><div class=\"flex-1 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_5 := `URL`
+		_, err = templBuffer.WriteString(var_5)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_6 := `Keywords`
+		_, err = templBuffer.WriteString(var_6)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_7 := `Title`
+		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_8 := `Content`
+		_, err = templBuffer.WriteString(var_8)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_9 := `Duplicate URL`
+		_, err = templBuffer.WriteString(var_9)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div></div>")
 		if err != nil {
 			return err
 		}
 		for _, item := range pages {
-			_, err = templBuffer.WriteString("<div><div>")
+			_, err = templBuffer.WriteString("<div class=\"flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div class=\"flex-1 p-2\">")
 			if err != nil {
 				return err
 			}
-			var var_3 string = item.Title
-			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
+			var var_10 string = item.URL
+			_, err = templBuffer.WriteString(templ.EscapeString(var_10))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+			if err != nil {
+				return err
+			}
+			var var_11 string = item.Keywords
+			_, err = templBuffer.WriteString(templ.EscapeString(var_11))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+			if err != nil {
+				return err
+			}
+			var var_12 string = item.Title
+			_, err = templBuffer.WriteString(templ.EscapeString(var_12))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\"><details><summary class=\"cursor-pointer\">")
+			if err != nil {
+				return err
+			}
+			var_13 := `View Content`
+			_, err = templBuffer.WriteString(var_13)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</summary> ")
+			if err != nil {
+				return err
+			}
+			var var_14 string = item.Content
+			_, err = templBuffer.WriteString(templ.EscapeString(var_14))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</details></div><div class=\"flex-1 p-2\">")
+			if err != nil {
+				return err
+			}
+			var var_15 string = item.URL
+			_, err = templBuffer.WriteString(templ.EscapeString(var_15))
 			if err != nil {
 				return err
 			}
@@ -50,7 +174,7 @@ func pages(pages []Page, websiteUrl string) templ.Component {
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString("</div>")
+		_, err = templBuffer.WriteString("</div></body></html>")
 		if err != nil {
 			return err
 		}
