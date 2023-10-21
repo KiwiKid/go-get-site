@@ -1,5 +1,5 @@
 package main
-templ pages(pages []Page, websiteUrl string) {
+templ pages(pages []Page, websiteUrl string, count LinkCountResult) {
     <html>
     @header()
     <body class="bg-gray-100" id="container">
@@ -9,6 +9,7 @@ templ pages(pages []Page, websiteUrl string) {
             <h1 class="text-xl mb-4">{websiteUrl}</h1>
             @linkGenerator(AHref, websiteUrl, "Refresh")
             @linkGenerator(Post, websiteUrl, "Process")
+            @process(count, websiteUrl)
 
             <!-- Flexbox header - Can be omitted if not required -->
             <div class="flex mb-2 font-bold text-sm text-gray-600 border-b-2">

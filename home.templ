@@ -1,6 +1,6 @@
 package main
 
-templ home(websiteUrls []string) {
+templ home(websiteUrls []Website) {
   <html>
   @header()
   <body  id="container">
@@ -11,7 +11,7 @@ templ home(websiteUrls []string) {
                 <ul>
                     for _, webUrl := range websiteUrls {
                         <li class="mb-2">
-                                @linkGenerator(AHref, webUrl, webUrl)
+                                @linkGenerator(AHref, webUrl.BaseUrl, webUrl.BaseUrl)
                         </li>
                     }
                 </ul>

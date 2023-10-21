@@ -41,3 +41,36 @@ func doubleEscape(str string) templ.Component {
 	})
 
 }
+
+func addQueryParam(originalURL, fromValue string) (string, error) {
+	// Parse the original URL
+	u, err := url.Parse(originalURL)
+	if err != nil {
+		return "", err
+	}
+
+	// Get existing query parameters
+	q := u.Query()
+
+	// Add or update the 'from' query parameter
+	q.Set("from", fromValue)
+
+	// Set the updated query parameters back to the URL
+	u.RawQuery = q.Encode()
+
+	return u.String(), nil
+}
+
+func removeHTTPScheme(rawURL string) (string, error) {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	// Clear the scheme
+	parsedURL.Scheme = ""
+	if parsedURL.Host != "" {
+		return fmt.Sprintf("%s%s", parsedURL.Host, parsedURL.Path), nil
+	}
+	return parsedURL.Path, nil
+}

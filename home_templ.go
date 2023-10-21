@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func home(websiteUrls []string) templ.Component {
+func home(websiteUrls []Website) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -47,7 +47,7 @@ func home(websiteUrls []string) templ.Component {
 			if err != nil {
 				return err
 			}
-			err = linkGenerator(AHref, webUrl, webUrl).Render(ctx, templBuffer)
+			err = linkGenerator(AHref, webUrl.BaseUrl, webUrl.BaseUrl).Render(ctx, templBuffer)
 			if err != nil {
 				return err
 			}

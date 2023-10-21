@@ -7,11 +7,7 @@ templ task(siteUrl string) {
     <div hx-get={siteUrl} hx-trigger="load">
     {siteUrl}
     <img  alt="Result loading..." class="htmx-indicator" width="150" src="/img/bars.svg"/>
-</div>
-      <!--<div hx-ext="sse" sse-connect="/progress" sse-swap="message">
-        Contents of this box will be updated in real time
-        with every SSE message received from the chatroom.
-    </div>-->
+    </div>
     </body>
     </html>
 }

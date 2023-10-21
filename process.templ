@@ -1,0 +1,11 @@
+package main
+
+import (
+	"strconv"
+)
+templ process(count LinkCountResult, websiteUrl string){
+
+     <div hx-get={`/process/{websiteUrl}`} hx-swap="outerHTML">
+        (<span>{strconv.Itoa(count.LinksHavePages)}</span> out of <span> {strconv.Itoa(count.TotalLinks)}</span>)
+    </div>
+}

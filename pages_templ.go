@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func pages(pages []Page, websiteUrl string) templ.Component {
+func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -65,6 +65,10 @@ func pages(pages []Page, websiteUrl string) templ.Component {
 			return err
 		}
 		err = linkGenerator(Post, websiteUrl, "Process").Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		err = process(count, websiteUrl).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}

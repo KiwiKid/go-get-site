@@ -47,19 +47,7 @@ func task(siteUrl string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(" <img alt=\"Result loading...\" class=\"htmx-indicator\" width=\"150\" src=\"/img/bars.svg\"></div><!--")
-		if err != nil {
-			return err
-		}
-		var_3 := `<div hx-ext="sse" sse-connect="/progress" sse-swap="message">
-        Contents of this box will be updated in real time
-        with every SSE message received from the chatroom.
-    </div>`
-		_, err = templBuffer.WriteString(var_3)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("--></body></html>")
+		_, err = templBuffer.WriteString(" <img alt=\"Result loading...\" class=\"htmx-indicator\" width=\"150\" src=\"/img/bars.svg\"></div></body></html>")
 		if err != nil {
 			return err
 		}

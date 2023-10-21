@@ -11,16 +11,10 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
-
-var processedLinks = make(map[string]bool)
-
-// Create a channel to send data
-var dataCh = make(chan string)
 
 func main() {
 	err := godotenv.Load()
@@ -42,11 +36,11 @@ func main() {
 
 	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
-	r.HandleFunc("/site/{websiteURL}", presentPages(ctx)).Methods("GET", "POST")
+	r.HandleFunc("/site/{websiteId}", presentPages(ctx)).Methods("GET", "POST")
 
 	r.Handle("/", presentHome()).Methods("GET", "POST")
 
-	r.HandleFunc("/progress", eventsHandler)
+	r.Handle("/progress", presentLinkCount())
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Received request: %s %s", r.Method, r.URL.Path)
@@ -101,11 +95,17 @@ func presentHome() http.HandlerFunc {
 				return
 			}
 
-			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteUrl, IsSeedUrl: true})
+			site, err := db.InsertWebsite(Website{BaseUrl: websiteUrl})
+			if err != nil {
+				http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
+				return
+			}
+
+			insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteUrl, IsSeedUrl: true, WebsiteId: site.ID})
 			if insertErr != nil {
 				log.Printf("Error saving page %s: %v", websiteUrl, insertErr)
-				http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
-				return
+				//http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
+				//		return
 			}
 			log.Print("INSERT DATES MethodPost")
 
@@ -130,12 +130,7 @@ func presentPages(ctx context.Context) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		websiteURLRaw := vars["websiteURL"]
-		websiteURL, err := url.QueryUnescape(websiteURLRaw)
-		if err != nil {
-			http.Error(w, "Failed to parse websiteURL", http.StatusInternalServerError)
-			return
-		}
+		websiteId := vars["websiteId"]
 
 		if r.Method == http.MethodPost {
 			log.Print("presentPages - POST")
@@ -144,10 +139,22 @@ func presentPages(ctx context.Context) http.HandlerFunc {
 				http.Error(w, "Failed to connect to the database", http.StatusInternalServerError)
 				return
 			}
-			log.Print("presentPages - POST 2")
+
+			websiteURL := vars["websiteUrl"]
+
+			insertErr := db.InsertLink(Link{URL: websiteURL, SourceURL: websiteURL, DateCreated: time.Now(), LastProcessed: time.Now()})
+			if insertErr != nil {
+				log.Printf("Error saving base link %s: %v", websiteURL, insertErr)
+				// return
+			}
+			unProcess := db.unProcessLink(websiteURL)
+			if unProcess != nil {
+				log.Printf("Error unProcessLink link %s: %v", websiteURL, unProcess)
+				// return
+			}
+
+			log.Print("presentPages - InsertLink")
 			processLink(ctx, websiteURL, *db)
-			log.Print("presentPages - POST 3")
-			log.Printf("saved page")
 
 			w.WriteHeader(http.StatusCreated) // 201 Created status
 		}
@@ -161,7 +168,7 @@ func presentPages(ctx context.Context) http.HandlerFunc {
 		pageSizeStr := r.URL.Query().Get("pageSize")
 		pageSize, err := strconv.Atoi(pageSizeStr)
 		if err != nil || pageSize <= 0 {
-			pageSize = 10
+			pageSize = 100
 		}
 
 		/*	db, err := NewDB()
@@ -169,45 +176,57 @@ func presentPages(ctx context.Context) http.HandlerFunc {
 				panic(err)
 			}*/
 
-		log.Printf("ListPages %s %d %d", websiteURL, page, pageSize)
+		//log.Printf("ListPages %s %d %d", websiteURL, page, pageSize)
 
-		pagesList, pageErr := db.ListPages(websiteURL, page, pageSize)
+		pagesList, pageErr := db.ListPages(websiteId, page, pageSize)
 		if pageErr != nil {
 			panic(pageErr)
 		}
-		pagesComp := pages(pagesList, websiteURL)
+
+		count, countErr := db.CountLinksAndPages(websiteId)
+		if countErr != nil {
+			log.Printf("Error CountLinksAndPages link %s: %v", websiteURL, err)
+			return
+		}
+
+		pagesComp := pages(pagesList, websiteURL, *count)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
-}
-
-func sendMessage(code string, messageStr string) {
-	data := fmt.Sprintf(`{"code": "%s", "messageStr": "%s"}`, code, messageStr)
-	dataCh <- data
 }
 
 func processLink(ctx context.Context, baseLink string, db DB) {
 	log.Print("StartProcessingLink", baseLink)
 
 	linksToProcess, err := db.GetUnprocessedLinks(baseLink, 20)
+	log.Printf("linksToProcess: %d", len(linksToProcess))
 	if err != nil {
 		log.Printf("Error GetLink from %s: %v", baseLink, err)
 		return
 	}
 
 	if len(linksToProcess) == 0 {
-		log.Printf("Already processed %s link.", baseLink)
+		log.Printf("SetLinkProcessed() %s", baseLink)
+		linkDoneErr := db.SetLinkProcessed(baseLink)
+		if linkDoneErr != nil {
+			log.Printf("Error marking link done %s: %v", baseLink, err)
+			return
+		}
 		return
 	}
 
 	for _, link := range linksToProcess {
-		links, err := fetchLinksFromPage(ctx, link.URL)
+		log.Printf("linksToProcess IN LOOP ===> : %s", link.URL)
+
+		/*links, err := fetchLinksFromPage(ctx, link.URL)
 		if err != nil {
 			log.Printf("Error fetching links from %s: %v", link, err)
 			return
-		}
+		}*/
 
-		title, content, err := fetchContentFromPage(ctx, link.URL)
+		// Process child links
+
+		title, content, links, err := fetchContentFromPage(ctx, link.URL)
 		if err != nil {
 			log.Printf("Error fetching content from %s: %v", link, err)
 			return
@@ -215,35 +234,38 @@ func processLink(ctx context.Context, baseLink string, db DB) {
 
 		insertErr := db.InsertPage(Page{Title: title, Content: content, URL: link.URL})
 		if insertErr != nil {
-			log.Printf("Error saving page %s: %v", link, err)
+			log.Printf("Error saving page %s: %v", link, insertErr)
 			return
+		}
+
+		for _, l := range links {
+
+			insertErr := db.InsertLink(Link{SourceURL: baseLink, URL: l, DateCreated: time.Now()})
+			if insertErr != nil {
+				log.Printf("Error saving link (maybe duplicate). Continuing %s: %v", link, insertErr)
+			}
 		}
 
 		message := fmt.Sprintf(`processed %s`, link)
 		fmt.Println("FinishedProcessingLink", message)
-
-		// Process child links
-		for _, l := range links {
-
-			insertErr := db.InsertLink(Link{sourceURL: baseLink, URL: l, DateCreated: time.Now(), LastProcessed: time.Now()})
-			if insertErr != nil {
-				log.Printf("Error saving link %s: %v", link, err)
-				return
-			}
-			//processLink(ctx, l, db)
-		}
 	}
 }
 
 func fetchLinksFromPage(ctx context.Context, urlStr string) ([]string, error) {
 	var links []string
-	url := os.Getenv("WEBSITE_NAME")
-	js := fmt.Sprintf(`Array.from(document.querySelectorAll("a[href^='%s']")).map(a => a.href)`, url)
 
+	js := fmt.Sprintf(`Array.from(document.querySelectorAll("a[href^='%s']")).map(a => a.href)`, urlStr)
+
+	urlWithoutProtocal, removeHttpScheme := removeHTTPScheme(urlStr)
+	if removeHttpScheme != nil {
+		log.Printf("Error setting cookie %s: %v", urlWithoutProtocal, removeHttpScheme)
+	}
 	err := chromedp.Run(ctx,
-		network.SetExtraHTTPHeaders(network.Headers{
-			"User-Agent": "MyCustomUserAgent",
-		}),
+		/*network.SetExtraHTTPHeaders(network.Headers{
+			"User-Agent": "",
+		}),*/
+		//storage.SetCookie("", ""),
+
 		chromedp.Navigate(urlStr),
 		chromedp.Evaluate(js, &links),
 	)
@@ -251,40 +273,89 @@ func fetchLinksFromPage(ctx context.Context, urlStr string) ([]string, error) {
 	return links, err
 }
 
-func fetchContentFromPage(ctx context.Context, urlStr string) (string, string, error) {
-	var content string
-	var title string
+func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		/*expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+		success := network.SetCookie(name, value).
+			WithExpires(&expr).
+			WithDomain(domain).
+			WithPath(path).
+			WithHTTPOnly(httpOnly).
+			WithSecure(secure).
+			Do(ctx)
 
-	err := chromedp.Run(ctx,
-		network.SetExtraHTTPHeaders(network.Headers{
-			"User-Agent": "MyCustomUserAgent",
-		}),
-		chromedp.Navigate(urlStr),
-		chromedp.Evaluate(`document.title`, &title),
-		chromedp.Evaluate(`document.body.innerText`, &content),
-	)
-
-	return title, content, err
+		if success.Error != nil {
+			return fmt.Errorf("could not set cookie %s", name)
+		} else {
+			log.Print("Set cookie")
+		}*/
+		return nil
+	})
 }
 
-func eventsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
+func fetchContentFromPage(ctx context.Context, urlStr string) (string, string, []string, error) {
+	var content string
+	var title string
+	var links []string
 
-	// Listen for client disconnection to stop sending events
-	ctx := r.Context()
-	// Send data to the client
-	go func() {
-		for {
-			select {
-			case data := <-dataCh:
-				fmt.Fprintf(w, "data: %s\n\n", data)
-				w.(http.Flusher).Flush()
-			case <-ctx.Done():
-				return
+	js := fmt.Sprintf(`Array.from(document.querySelectorAll("a[href^='%s']")).map(a => a.href)`, urlStr)
 
-			}
+	autoUrl, addQueryErr := addQueryParam(urlStr, "1c8ca3a202b84c47961b79700b40f01a")
+	if addQueryErr != nil {
+		panic(addQueryErr)
+	}
+
+	log.Printf("url to go: %s", autoUrl)
+
+	tasks := []chromedp.Action{
+		chromedp.Navigate(autoUrl),
+	}
+
+	pass := os.Getenv("PASS")
+	// Check if the environment variable "NAME" exists
+	if name := os.Getenv("NAME"); name != "" {
+		// Add the login tasks if the NAME env variable exists
+		tasks = append(tasks,
+			chromedp.WaitVisible(`#txtUserName`, chromedp.ByID), // Wait for an element that's visible after login
+			chromedp.SendKeys(`#txtUserName`, name),
+			chromedp.SendKeys(`#txtPassword`, pass),
+			chromedp.Click(`#btnLogin`),
+			chromedp.WaitVisible(`#elementAfterLogin`, chromedp.ByID), // Wait for an element that's visible after login
+		)
+	}
+
+	// Add the rest of the tasks
+	tasks = append(tasks,
+		chromedp.Evaluate(`document.title`, &title),
+		chromedp.Evaluate(`document.body.innerText`, &content),
+		chromedp.Evaluate(js, &links),
+	)
+
+	log.Print("Starting tasks")
+	err := chromedp.Run(ctx, tasks...)
+	log.Print("Finished tasks")
+	return title, content, links, err
+}
+
+func presentLinkCount() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		websiteURLRaw := vars["websiteURL"]
+		websiteURL, err := url.QueryUnescape(websiteURLRaw)
+
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
 		}
-	}()
+
+		count, countErr := db.CountLinksAndPages(websiteURL)
+		if countErr != nil {
+			log.Printf("Error CountLinksAndPages link %s: %v", websiteURL, err)
+			return
+		}
+
+		pagesComp := process(*count, websiteURL)
+
+		templ.Handler(pagesComp).ServeHTTP(w, r)
+	}
 }
