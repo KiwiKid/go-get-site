@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func process(count LinkCountResult, websiteUrl string) templ.Component {
+func process(count LinkCountResult, websiteId string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -30,7 +30,7 @@ func process(count LinkCountResult, websiteUrl string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(templ.EscapeString(`/process/{websiteUrl}`))
+		_, err = templBuffer.WriteString(templ.EscapeString(`/process/{websiteId}`))
 		if err != nil {
 			return err
 		}

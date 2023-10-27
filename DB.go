@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -51,6 +53,10 @@ func (Website) TableName() string {
 	return "pgml.website"
 }
 
+func (w *Website) websiteURL() string {
+	return fmt.Sprintf("/site/%d", w.ID)
+}
+
 type DB struct {
 	conn *gorm.DB
 }
@@ -94,6 +100,19 @@ func (db *DB) InsertWebsite(website Website) (Website, error) {
 		return Website{}, result.Error
 	}
 	return website, nil
+}
+
+func (db *DB) GetWebsite(id uint) (*Website, error) {
+	var website Website
+	result := db.conn.First(&website, id)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil // return nil when not found
+		}
+		log.Print(result.Error)
+		return nil, result.Error
+	}
+	return &website, nil
 }
 
 func (db *DB) InsertPage(page Page) error {
@@ -151,7 +170,7 @@ func (db *DB) SetLinkProcessed(url string) error {
 	return result.Error
 }
 
-func (db *DB) ListPages(websiteId string, page int, pageSize int) ([]Page, error) {
+func (db *DB) ListPages(websiteId uint, page int, pageSize int) ([]Page, error) {
 	var pages []Page
 	offset := (page - 1) * pageSize
 	result := db.conn.Where("website_id = ?", websiteId).Offset(offset).Limit(pageSize).Find(&pages)
@@ -176,7 +195,7 @@ type LinkCountResult struct {
 	LinksHavePages int
 }
 
-func (db *DB) CountLinksAndPages(websiteId string) (*LinkCountResult, error) {
+func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 	log.Print(websiteId)
 	// Count total links for the URL
 	var totalLinks int64

@@ -11,7 +11,7 @@ templ home(websiteUrls []Website) {
                 <ul>
                     for _, webUrl := range websiteUrls {
                         <li class="mb-2">
-                                @linkGenerator(AHref, webUrl.BaseUrl, webUrl.BaseUrl)
+                            <a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"  href={templ.URL(webUrl.websiteURL())}>{webUrl.BaseUrl}</a>
                         </li>
                     }
                 </ul>

@@ -1,15 +1,15 @@
 package main
-templ pages(pages []Page, websiteUrl string, count LinkCountResult) {
+templ pages(pages []Page, website Website, count LinkCountResult) {
     <html>
     @header()
     <body class="bg-gray-100" id="container">
         @nav()
         <div class="container mx-auto mt-12 p-4">
             <h1 class="text-4xl font-bold mb-6">PAGES</h1>
-            <h1 class="text-xl mb-4">{websiteUrl}</h1>
-            @linkGenerator(AHref, websiteUrl, "Refresh")
-            @linkGenerator(Post, websiteUrl, "Process")
-            @process(count, websiteUrl)
+            <h1 class="text-xl mb-4">{website.BaseUrl}</h1>
+            <a href={templ.URL(website.websiteURL())} class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Referesh</a>
+            <button hx-post={website.websiteURL()} hx-target="#container"  class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Process</button>
+            @process(count, string(website.ID))
 
             <!-- Flexbox header - Can be omitted if not required -->
             <div class="flex mb-2 font-bold text-sm text-gray-600 border-b-2">
@@ -23,7 +23,7 @@ templ pages(pages []Page, websiteUrl string, count LinkCountResult) {
 
             for _, item := range pages {
             <div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
-                <div class="flex-1 p-2">{ item.URL }</div>
+                <div class="flex-1 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{item.URL}</a></div>
                 <div class="flex-1 p-2">{ item.Keywords }</div>
                 <div class="flex-1 p-2">{ item.Title }</div>
                 <div class="flex-2 p-2">

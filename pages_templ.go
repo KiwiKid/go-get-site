@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Component {
+func pages(pages []Page, website Website, count LinkCountResult) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -51,24 +51,51 @@ func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Compone
 		if err != nil {
 			return err
 		}
-		var var_3 string = websiteUrl
+		var var_3 string = website.BaseUrl
 		_, err = templBuffer.WriteString(templ.EscapeString(var_3))
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1>")
+		_, err = templBuffer.WriteString("</h1><a href=\"")
 		if err != nil {
 			return err
 		}
-		err = linkGenerator(AHref, websiteUrl, "Refresh").Render(ctx, templBuffer)
+		var var_4 templ.SafeURL = templ.URL(website.websiteURL())
+		_, err = templBuffer.WriteString(templ.EscapeString(string(var_4)))
 		if err != nil {
 			return err
 		}
-		err = linkGenerator(Post, websiteUrl, "Process").Render(ctx, templBuffer)
+		_, err = templBuffer.WriteString("\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\">")
 		if err != nil {
 			return err
 		}
-		err = process(count, websiteUrl).Render(ctx, templBuffer)
+		var_5 := `Referesh`
+		_, err = templBuffer.WriteString(var_5)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</a><button hx-post=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(website.websiteURL()))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" hx-target=\"#container\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\">")
+		if err != nil {
+			return err
+		}
+		var_6 := `Process`
+		_, err = templBuffer.WriteString(var_6)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</button>")
+		if err != nil {
+			return err
+		}
+		err = process(count, string(website.ID)).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -76,8 +103,8 @@ func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Compone
 		if err != nil {
 			return err
 		}
-		var_4 := ` Flexbox header - Can be omitted if not required `
-		_, err = templBuffer.WriteString(var_4)
+		var_7 := ` Flexbox header - Can be omitted if not required `
+		_, err = templBuffer.WriteString(var_7)
 		if err != nil {
 			return err
 		}
@@ -85,34 +112,7 @@ func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Compone
 		if err != nil {
 			return err
 		}
-		var_5 := `URL`
-		_, err = templBuffer.WriteString(var_5)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
-		if err != nil {
-			return err
-		}
-		var_6 := `Keywords`
-		_, err = templBuffer.WriteString(var_6)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
-		if err != nil {
-			return err
-		}
-		var_7 := `Title`
-		_, err = templBuffer.WriteString(var_7)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\">")
-		if err != nil {
-			return err
-		}
-		var_8 := `Content`
+		var_8 := `URL`
 		_, err = templBuffer.WriteString(var_8)
 		if err != nil {
 			return err
@@ -121,7 +121,7 @@ func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Compone
 		if err != nil {
 			return err
 		}
-		var_9 := `Date Created`
+		var_9 := `Keywords`
 		_, err = templBuffer.WriteString(var_9)
 		if err != nil {
 			return err
@@ -130,8 +130,35 @@ func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Compone
 		if err != nil {
 			return err
 		}
-		var_10 := `Date Updated`
+		var_10 := `Title`
 		_, err = templBuffer.WriteString(var_10)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_11 := `Content`
+		_, err = templBuffer.WriteString(var_11)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_12 := `Date Created`
+		_, err = templBuffer.WriteString(var_12)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_13 := `Date Updated`
+		_, err = templBuffer.WriteString(var_13)
 		if err != nil {
 			return err
 		}
@@ -140,56 +167,29 @@ func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Compone
 			return err
 		}
 		for _, item := range pages {
-			_, err = templBuffer.WriteString("<div class=\"flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div class=\"flex-1 p-2\">")
+			_, err = templBuffer.WriteString("<div class=\"flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div class=\"flex-1 p-2\"><a target=\"_blank\" href=\"")
 			if err != nil {
 				return err
 			}
-			var var_11 string = item.URL
-			_, err = templBuffer.WriteString(templ.EscapeString(var_11))
+			var var_14 templ.SafeURL = templ.SafeURL(item.URL)
+			_, err = templBuffer.WriteString(templ.EscapeString(string(var_14)))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+			_, err = templBuffer.WriteString("\">")
 			if err != nil {
 				return err
 			}
-			var var_12 string = item.Keywords
-			_, err = templBuffer.WriteString(templ.EscapeString(var_12))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
-			if err != nil {
-				return err
-			}
-			var var_13 string = item.Title
-			_, err = templBuffer.WriteString(templ.EscapeString(var_13))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\"><details><summary class=\"cursor-pointer\">")
-			if err != nil {
-				return err
-			}
-			var_14 := `View Content`
-			_, err = templBuffer.WriteString(var_14)
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</summary> ")
-			if err != nil {
-				return err
-			}
-			var var_15 string = item.Content
+			var var_15 string = item.URL
 			_, err = templBuffer.WriteString(templ.EscapeString(var_15))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</details></div><div class=\"flex-1 p-2\">")
+			_, err = templBuffer.WriteString("</a></div><div class=\"flex-1 p-2\">")
 			if err != nil {
 				return err
 			}
-			var var_16 string = item.DateCreated.Local().String()
+			var var_16 string = item.Keywords
 			_, err = templBuffer.WriteString(templ.EscapeString(var_16))
 			if err != nil {
 				return err
@@ -198,8 +198,44 @@ func pages(pages []Page, websiteUrl string, count LinkCountResult) templ.Compone
 			if err != nil {
 				return err
 			}
-			var var_17 string = item.DateUpdated.Local().String()
+			var var_17 string = item.Title
 			_, err = templBuffer.WriteString(templ.EscapeString(var_17))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\"><details><summary class=\"cursor-pointer\">")
+			if err != nil {
+				return err
+			}
+			var_18 := `View Content`
+			_, err = templBuffer.WriteString(var_18)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</summary> ")
+			if err != nil {
+				return err
+			}
+			var var_19 string = item.Content
+			_, err = templBuffer.WriteString(templ.EscapeString(var_19))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</details></div><div class=\"flex-1 p-2\">")
+			if err != nil {
+				return err
+			}
+			var var_20 string = item.DateCreated.Local().String()
+			_, err = templBuffer.WriteString(templ.EscapeString(var_20))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+			if err != nil {
+				return err
+			}
+			var var_21 string = item.DateUpdated.Local().String()
+			_, err = templBuffer.WriteString(templ.EscapeString(var_21))
 			if err != nil {
 				return err
 			}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 
 	"github.com/a-h/templ"
 )
@@ -73,4 +74,15 @@ func removeHTTPScheme(rawURL string) (string, error) {
 		return fmt.Sprintf("%s%s", parsedURL.Host, parsedURL.Path), nil
 	}
 	return parsedURL.Path, nil
+}
+
+func stringToUint(s string) (uint, error) {
+	i, err := strconv.Atoi(s) // Convert string to int
+	if err != nil {
+		return 0, err
+	}
+	if i < 0 {
+		return 0, fmt.Errorf("negative value not allowed: %d", i)
+	}
+	return uint(i), nil
 }

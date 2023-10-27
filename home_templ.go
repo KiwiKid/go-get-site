@@ -43,15 +43,25 @@ func home(websiteUrls []Website) templ.Component {
 			return err
 		}
 		for _, webUrl := range websiteUrls {
-			_, err = templBuffer.WriteString("<li class=\"mb-2\">")
+			_, err = templBuffer.WriteString("<li class=\"mb-2\"><a class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\" href=\"")
 			if err != nil {
 				return err
 			}
-			err = linkGenerator(AHref, webUrl.BaseUrl, webUrl.BaseUrl).Render(ctx, templBuffer)
+			var var_2 templ.SafeURL = templ.URL(webUrl.websiteURL())
+			_, err = templBuffer.WriteString(templ.EscapeString(string(var_2)))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</li>")
+			_, err = templBuffer.WriteString("\">")
+			if err != nil {
+				return err
+			}
+			var var_3 string = webUrl.BaseUrl
+			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</a></li>")
 			if err != nil {
 				return err
 			}
@@ -60,8 +70,8 @@ func home(websiteUrls []Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_2 := `A new site url:`
-		_, err = templBuffer.WriteString(var_2)
+		var_4 := `A new site url:`
+		_, err = templBuffer.WriteString(var_4)
 		if err != nil {
 			return err
 		}
@@ -69,8 +79,8 @@ func home(websiteUrls []Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_3 := `Website Url:`
-		_, err = templBuffer.WriteString(var_3)
+		var_5 := `Website Url:`
+		_, err = templBuffer.WriteString(var_5)
 		if err != nil {
 			return err
 		}
