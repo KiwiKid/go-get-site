@@ -1,0 +1,26 @@
+package main
+
+import "strconv"
+
+templ chat(threadId string, chats []Chat) {
+	<div>
+		<h1>Chat</h1>
+		for _, item := range chats {
+			<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
+				<details>
+					<summary class="cursor-pointer">View Content</summary>
+					{ strconv.Itoa(int(item.ThreadId)) }
+				</details>
+			</div>
+			<div>
+				<form hx-post={ item.ChatURL() } hx-swap="outerHTML" hx-target="#container" class="space-y-4">
+					<label for="websiteUrl" class="block text-sm font-medium text-gray-600">Website Url:</label>
+					<input type="text" id="threadId" name="threadId" value={ threadId } hidden="hidden" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+					<input type="text" id="message" name="threadId" value="" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+					<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				</form>
+			</div>
+		}
+	</div>
+}
+

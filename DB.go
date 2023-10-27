@@ -53,8 +53,28 @@ func (Website) TableName() string {
 	return "pgml.website"
 }
 
+type Chat struct {
+	ID          uint      `gorm:"primary_key"`
+	ThreadId    uint      `gorm:"primary_key"`
+	WebsiteId   uint      `gorm:"primary_key"`
+	Message     string    `gorm:"size:255"`
+	DateCreated time.Time `gorm:"type:timestamp"`
+}
+
+func (Chat) TableName() string {
+	return "pgml.chat"
+}
+
 func (w *Website) websiteURL() string {
 	return fmt.Sprintf("/site/%d", w.ID)
+}
+
+func (w *ChatThread) ChatThreadURL() string {
+	return fmt.Sprintf("/chat/%d", w.ThreadId)
+}
+
+func (w *Chat) ChatURL() string {
+	return fmt.Sprintf("/chat/%d", w.ThreadId)
 }
 
 type DB struct {
@@ -77,7 +97,7 @@ func (db *DB) Migrate() {
 	db.conn.AutoMigrate(&Page{})
 	db.conn.AutoMigrate(&Link{})
 	db.conn.AutoMigrate(&Website{})
-
+	db.conn.AutoMigrate(&Chat{})
 	// Check if the index exists
 	var count int64
 	db.conn.Raw(`
@@ -178,6 +198,56 @@ func (db *DB) ListPages(websiteId uint, page int, pageSize int) ([]Page, error) 
 		return nil, result.Error
 	}
 	return pages, nil
+}
+
+func (db *DB) InsertChat(chat Chat) error {
+	log.Printf("Saving chat %v", chat)
+	chat.DateCreated = time.Now()
+	result := db.conn.Create(&chat) //.Clauses(clause.OnConflict{UpdateAll: true})
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) ListChats(threadId uint) ([]Chat, error) {
+	var chats []Chat
+	result := db.conn.Where("thread_id = ?", threadId).Find(&chats)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return chats, nil
+}
+
+type ChatThread struct {
+	ThreadId     uint
+	FirstMessage string
+	DateCreated  time.Time
+}
+
+// List chat threads, first message, distict by ThreadId
+func (db *DB) ListChatThreads() ([]ChatThread, error) {
+	var chatThreads []ChatThread
+
+	// This SQL joins the chats table with a subquery that numbers each row per thread based on date created.
+	// We then filter for rows that are numbered 1 to get the first message of each thread.
+	rawSQL := `
+	SELECT chats.thread_id, chats.message as first_message, chats.date_created
+	FROM (
+		SELECT *, ROW_NUMBER() OVER(PARTITION BY thread_id ORDER BY date_created ASC) as rn 
+		FROM pgml.chat
+	) AS chats
+	WHERE chats.rn = 1
+	ORDER BY chats.date_created ASC
+	`
+
+	result := db.conn.Raw(rawSQL).Scan(&chatThreads)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return chatThreads, nil
 }
 
 func (db *DB) InsertLink(link Link) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,6 +39,9 @@ func main() {
 
 	r.Handle("/", presentHome()).Methods("GET", "POST")
 
+	r.Handle("/chat", presentChat()).Methods("GET", "POST")
+	r.Handle("/chat/{threadId}", presentChat()).Methods("GET", "POST")
+
 	r.Handle("/progress", presentLinkCount())
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +70,74 @@ func main() {
 	//	panic(err)
 	//}
 	// processLink(ctx, url, *db)
+}
+
+func presentChat() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Print("presentChat - NewDB")
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+
+		vars := mux.Vars(r)
+		threadIdStr := vars["threadId"]
+		log.Printf("presentChat - threadIdStr %v", threadIdStr)
+
+		if threadIdStr == "" {
+			log.Printf("presentChat - EMPTY threadIdStr %v", threadIdStr)
+
+			chatThreads, pageErr := db.ListChatThreads()
+			if err != nil {
+				panic(pageErr)
+			}
+			rand.Seed(time.Now().UnixNano())
+			randomValue := uint(rand.Uint32())
+			randomValueStr := strconv.FormatUint(uint64(randomValue), 10)
+			newThreadURL := "/chat/" + randomValueStr
+
+			websites, pageErr := db.ListWebsites()
+			if err != nil {
+				panic(pageErr)
+			}
+
+			chatComp := threads(chatThreads, newThreadURL, websites)
+
+			templ.Handler(chatComp).ServeHTTP(w, r)
+			return
+		}
+
+		threadId, err := stringToUint(threadIdStr)
+		if threadIdStr == "" || err != nil {
+			http.Error(w, "Failed to ThreadId", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("chat http methd: %v", r.Method)
+		if r.Method == http.MethodPost {
+			websiteIdStr := r.FormValue("websiteId")
+			websiteId, err := stringToUint(websiteIdStr)
+			if websiteIdStr == "" || err != nil {
+				http.Error(w, "Failed based on websiteId", http.StatusInternalServerError)
+				return
+			}
+			message := r.FormValue("message")
+			insErr := db.InsertChat(Chat{ThreadId: threadId, Message: message, WebsiteId: websiteId})
+			if insErr != nil {
+				http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
+				return
+			}
+		}
+
+		chats, pageErr := db.ListChats(threadId)
+		if err != nil {
+			panic(pageErr)
+		}
+
+		chatComp := chat(threadIdStr, chats)
+
+		templ.Handler(chatComp).ServeHTTP(w, r)
+	}
 }
 
 func presentHome() http.HandlerFunc {
