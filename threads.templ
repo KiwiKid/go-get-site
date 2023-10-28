@@ -12,12 +12,12 @@ templ threads(threads []ChatThread, newThreadURL string, websites []Website) {
 					<h1>Threads</h1>
 					for _, thread := range threads {
 						<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
-							<div>{ strconv.Itoa(int(thread.ThreadId)) }</div>
-							<div>{ thread.FirstMessage }</div>
-							<a href={ templ.URL(thread.ChatThreadURL()) }>{ thread.FirstMessage }</a>
+							<div>
+								<a href={ templ.URL(thread.ChatThreadURL()) } class="underline">{ thread.FirstMessage } - { strconv.Itoa(int(thread.ThreadId)) }</a>
+							</div>
 						</div>
 					}
-					<div class="mt-8">
+					<div class="mt-16">
 						<div class="text-gray-700 font-bold mb-4">A new Chat:</div>
 						<form hx-post={ newThreadURL } hx-swap="outerHTML" hx-target="#container" class="space-y-4">
 							<label for="websiteUrl" class="block text-sm font-medium text-gray-600">WebsiteUrl:</label>

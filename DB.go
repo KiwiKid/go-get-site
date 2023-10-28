@@ -250,6 +250,57 @@ func (db *DB) ListChatThreads() ([]ChatThread, error) {
 	return chatThreads, nil
 }
 
+type QueryResult struct {
+	Result []byte
+}
+
+func (qr QueryResult) String() string {
+	return string(qr.Result)
+}
+
+func (db *DB) QueryWebsite(question string) ([]QueryResult, error) {
+
+	var queryResult []QueryResult
+
+	// This SQL joins the chats table with a subquery that numbers each row per thread based on date created.
+	// We then filter for rows that are numbered 1 to get the first message of each thread.
+	rawSQL := `
+	SELECT pgml.transform(
+
+		inputs => ARRAY[
+	
+			'I am so excited to benchmark deep learning models in SQL. I can not wait to see the results!'
+	
+		],
+	
+		task   => '{
+	
+			"task": "text-classification", 
+	
+			"model": "cardiffnlp/twitter-roberta-base-sentiment"
+	
+		}'::JSONB
+	
+	);
+	`
+	/*
+		SELECT chats.thread_id, chats.message as first_message, chats.date_created
+		FROM (
+			SELECT *, ROW_NUMBER() OVER(PARTITION BY thread_id ORDER BY date_created ASC) as rn
+			FROM pgml.chat
+		) AS chats
+		WHERE chats.rn = 1
+		ORDER BY chats.date_created ASC
+	*/
+	result := db.conn.Raw(rawSQL).Scan(&queryResult)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return queryResult, nil
+}
+
 func (db *DB) InsertLink(link Link) error {
 	result := db.conn.Create(&link).Clauses(clause.OnConflict{UpdateAll: true})
 	return result.Error

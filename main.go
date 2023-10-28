@@ -118,6 +118,7 @@ func presentChat() http.HandlerFunc {
 			websiteIdStr := r.FormValue("websiteId")
 			websiteId, err := stringToUint(websiteIdStr)
 			if websiteIdStr == "" || err != nil {
+				log.Printf("Failed based on websiteId %v", err)
 				http.Error(w, "Failed based on websiteId", http.StatusInternalServerError)
 				return
 			}
@@ -127,6 +128,19 @@ func presentChat() http.HandlerFunc {
 				http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
 				return
 			}
+
+			queryRes, queryErr := db.QueryWebsite(message)
+			if queryErr != nil {
+				http.Error(w, "Query failed", http.StatusBadRequest)
+				return
+			}
+
+			insAIErr := db.InsertChat(Chat{ThreadId: threadId, Message: queryRes[0].String(), WebsiteId: websiteId})
+
+			if insAIErr != nil {
+				http.Error(w, "insAIErr failed", http.StatusBadRequest)
+				return
+			}
 		}
 
 		chats, pageErr := db.ListChats(threadId)
@@ -134,7 +148,11 @@ func presentChat() http.HandlerFunc {
 			panic(pageErr)
 		}
 
-		chatComp := chat(threadIdStr, chats)
+		websiteIdStr := strconv.Itoa(int(chats[0].WebsiteId))
+
+		newChatUrl := chats[0].ChatURL()
+
+		chatComp := chat(threadIdStr, websiteIdStr, newChatUrl, chats)
 
 		templ.Handler(chatComp).ServeHTTP(w, r)
 	}

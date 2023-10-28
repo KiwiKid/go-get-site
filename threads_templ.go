@@ -54,16 +54,16 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 			return err
 		}
 		for _, thread := range threads {
-			_, err = templBuffer.WriteString("<div class=\"flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div>")
+			_, err = templBuffer.WriteString("<div class=\"flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div><a href=\"")
 			if err != nil {
 				return err
 			}
-			var var_3 string = strconv.Itoa(int(thread.ThreadId))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
+			var var_3 templ.SafeURL = templ.URL(thread.ChatThreadURL())
+			_, err = templBuffer.WriteString(templ.EscapeString(string(var_3)))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</div><div>")
+			_, err = templBuffer.WriteString("\" class=\"underline\">")
 			if err != nil {
 				return err
 			}
@@ -72,30 +72,26 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</div><a href=\"")
+			_, err = templBuffer.WriteString(" ")
 			if err != nil {
 				return err
 			}
-			var var_5 templ.SafeURL = templ.URL(thread.ChatThreadURL())
-			_, err = templBuffer.WriteString(templ.EscapeString(string(var_5)))
+			var_5 := `- `
+			_, err = templBuffer.WriteString(var_5)
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\">")
-			if err != nil {
-				return err
-			}
-			var var_6 string = thread.FirstMessage
+			var var_6 string = strconv.Itoa(int(thread.ThreadId))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_6))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</a></div>")
+			_, err = templBuffer.WriteString("</a></div></div>")
 			if err != nil {
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString("<div class=\"mt-8\"><div class=\"text-gray-700 font-bold mb-4\">")
+		_, err = templBuffer.WriteString("<div class=\"mt-16\"><div class=\"text-gray-700 font-bold mb-4\">")
 		if err != nil {
 			return err
 		}

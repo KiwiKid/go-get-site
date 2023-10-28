@@ -11,7 +11,7 @@ import "bytes"
 
 import "strconv"
 
-func chat(threadId string, chats []Chat) templ.Component {
+func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -24,6 +24,22 @@ func chat(threadId string, chats []Chat) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		_, err = templBuffer.WriteString("<html>")
+		if err != nil {
+			return err
+		}
+		err = header().Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("<body id=\"container\">")
+		if err != nil {
+			return err
+		}
+		err = nav().Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
 		_, err = templBuffer.WriteString("<div><h1>")
 		if err != nil {
 			return err
@@ -38,12 +54,12 @@ func chat(threadId string, chats []Chat) templ.Component {
 			return err
 		}
 		for _, item := range chats {
-			_, err = templBuffer.WriteString("<div class=\"flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><details><summary class=\"cursor-pointer\">")
+			_, err = templBuffer.WriteString("<div class=\"p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div></div><details><summary class=\"cursor-pointer\">")
 			if err != nil {
 				return err
 			}
-			var_3 := `View Content`
-			_, err = templBuffer.WriteString(var_3)
+			var var_3 string = item.Message
+			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
 			if err != nil {
 				return err
 			}
@@ -56,37 +72,63 @@ func chat(threadId string, chats []Chat) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</details></div> <div><form hx-post=\"")
+			_, err = templBuffer.WriteString(" ")
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString(templ.EscapeString(item.ChatURL()))
+			var var_5 string = strconv.Itoa(int(item.WebsiteId))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_5))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4\"><label for=\"websiteUrl\" class=\"block text-sm font-medium text-gray-600\">")
-			if err != nil {
-				return err
-			}
-			var_5 := `Website Url:`
-			_, err = templBuffer.WriteString(var_5)
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"threadId\" name=\"threadId\" value=\"")
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString(templ.EscapeString(threadId))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("\" hidden=\"hidden\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"text\" id=\"message\" name=\"threadId\" value=\"\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div>")
+			_, err = templBuffer.WriteString("</details></div>")
 			if err != nil {
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString("</div>")
+		_, err = templBuffer.WriteString("<div><div>")
+		if err != nil {
+			return err
+		}
+		var var_6 string = websiteId
+		_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><form hx-post=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(newChatUrl))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4\"><input type=\"text\" id=\"threadId\" name=\"threadId\" value=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(threadId))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" hidden=\"hidden\" required><input type=\"text\" id=\"websiteId\" name=\"websiteId\" value=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(websiteId))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" hidden=\"hidden\" required><label for=\"message\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_7 := `Ask this site:`
+		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"message\" name=\"message\" value=\"\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></body></html>")
 		if err != nil {
 			return err
 		}
