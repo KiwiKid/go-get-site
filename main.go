@@ -333,11 +333,14 @@ func processLink(ctx context.Context, baseLink string, db DB, website Website) {
 			log.Printf("Error fetching content from %v: %v", link, err)
 			return
 		}
-		log.Printf("UpdatePage %v", title)
-		updateErr := db.UpdatePage(Page{Title: title, Content: content, URL: link.URL, WebsiteId: website.ID})
-		if updateErr != nil {
-			log.Printf("Error saving page 2 %s: %v", link, updateErr)
-			return
+		log.Printf("UpdatePage %v - %v", title, content)
+		insertErr := db.InsertPage(Page{Title: title, Content: content, URL: link.URL, WebsiteId: website.ID})
+		if insertErr != nil {
+			updateErr := db.UpdatePage(Page{Title: title, Content: content, URL: link.URL, WebsiteId: website.ID})
+			if updateErr != nil {
+				log.Printf("Error saving page 2 %s: %v", link, updateErr)
+				return
+			}
 		}
 		log.Printf("links start %v", links)
 		for _, l := range links {

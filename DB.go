@@ -17,6 +17,7 @@ type Page struct {
 	Title       string    `gorm:"size:255"`
 	Keywords    string    `gorm:"size:255"`
 	Content     string    `gorm:"type:text"`
+	Embedding   []byte    `gorm:"-"`
 	URL         string    `gorm:"size:255;unique"`
 	Links       []string  `gorm:"type:text[]"`
 	IsSeedUrl   bool      `gorm:"type:boolean;default:false;not null"`
@@ -52,6 +53,15 @@ type Website struct {
 func (Website) TableName() string {
 	return "pgml.website"
 }
+
+/*
+type Embedding struct {
+	ID     uint   `gorm:"primary_key"`
+	PageId uint   `gorm"index;not null"`
+	Model  string `gorm:"size:255`
+
+	DateCreated time.Time `gorm:"type:timestamp"`
+}*/
 
 type Chat struct {
 	ID          uint      `gorm:"primary_key"`
@@ -98,17 +108,43 @@ func (db *DB) Migrate() {
 	db.conn.AutoMigrate(&Link{})
 	db.conn.AutoMigrate(&Website{})
 	db.conn.AutoMigrate(&Chat{})
+	//db.conn.AutoMigrate(&Embedding{})
+
 	// Check if the index exists
 	var count int64
 	db.conn.Raw(`
         SELECT COUNT(*) 
         FROM pg_indexes 
-        WHERE tablename = ? 
         AND indexname = ?
 	`, "pgml.page", "idx_website_url").Scan(&count)
 
 	if count == 0 {
 		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url)")
+	}
+
+	err := db.conn.Exec(`
+		DO $$ 
+		BEGIN 
+			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
+				ALTER TABLE pgml.page DROP COLUMN embedding;
+			END IF;
+		END $$;
+		
+		-- Add the new generated embedding column if it doesn't exist
+		DO $$ 
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
+				ALTER TABLE pgml.page 
+				ADD COLUMN embedding vector(384) GENERATED ALWAYS AS 
+				(pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
+							text => content, 
+							kwargs => '{"device": "cuda"}'::jsonb)) STORED;
+			END IF;
+		END $$;
+		`).Error
+
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -147,7 +183,7 @@ func (db *DB) InsertPage(page Page) error {
 
 func (db *DB) UpdatePage(page Page) error {
 	page.DateUpdated = time.Now()
-	result := db.conn.Model(&page).Updates(page)
+	result := db.conn.Model(&page).Where("pgml.page.id = ? ", page.ID).Updates(page)
 	return result.Error
 }
 
@@ -251,7 +287,7 @@ func (db *DB) ListChatThreads() ([]ChatThread, error) {
 }
 
 type QueryResult struct {
-	Result []byte
+	Result []byte `gorm:"type:jsonb"`
 }
 
 func (qr QueryResult) String() string {
@@ -259,46 +295,34 @@ func (qr QueryResult) String() string {
 }
 
 func (db *DB) QueryWebsite(question string) ([]QueryResult, error) {
+	var queryResults []QueryResult
 
-	var queryResult []QueryResult
+	rawSQL := fmt.Sprintf(`
+    SELECT pgml.transform(
+        inputs => ARRAY[
+            '%s'
+        ],
+        task   => '{
+            "task": "question-answering", 
+            "model": "cardiffnlp/twitter-roberta-base-sentiment"
+        }'::JSONB
+    );`, question)
 
-	// This SQL joins the chats table with a subquery that numbers each row per thread based on date created.
-	// We then filter for rows that are numbered 1 to get the first message of each thread.
-	rawSQL := `
-	SELECT pgml.transform(
+	rows, err := db.conn.Raw(rawSQL).Rows() // Here we get the raw rows
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-		inputs => ARRAY[
-	
-			'I am so excited to benchmark deep learning models in SQL. I can not wait to see the results!'
-	
-		],
-	
-		task   => '{
-	
-			"task": "text-classification", 
-	
-			"model": "cardiffnlp/twitter-roberta-base-sentiment"
-	
-		}'::JSONB
-	
-	);
-	`
-	/*
-		SELECT chats.thread_id, chats.message as first_message, chats.date_created
-		FROM (
-			SELECT *, ROW_NUMBER() OVER(PARTITION BY thread_id ORDER BY date_created ASC) as rn
-			FROM pgml.chat
-		) AS chats
-		WHERE chats.rn = 1
-		ORDER BY chats.date_created ASC
-	*/
-	result := db.conn.Raw(rawSQL).Scan(&queryResult)
-
-	if result.Error != nil {
-		return nil, result.Error
+	for rows.Next() {
+		var qr QueryResult
+		if err := rows.Scan(&qr.Result); err != nil { // Manual scan
+			return nil, err
+		}
+		queryResults = append(queryResults, qr)
 	}
 
-	return queryResult, nil
+	return queryResults, nil
 }
 
 func (db *DB) InsertLink(link Link) error {
