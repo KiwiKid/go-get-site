@@ -49,49 +49,12 @@ func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) te
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1>")
+		_, err = templBuffer.WriteString("</h1><div><div>")
 		if err != nil {
 			return err
 		}
-		for _, item := range chats {
-			_, err = templBuffer.WriteString("<div class=\"p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div></div><details><summary class=\"cursor-pointer\">")
-			if err != nil {
-				return err
-			}
-			var var_3 string = item.Message
-			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</summary> ")
-			if err != nil {
-				return err
-			}
-			var var_4 string = strconv.Itoa(int(item.ThreadId))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_4))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString(" ")
-			if err != nil {
-				return err
-			}
-			var var_5 string = strconv.Itoa(int(item.WebsiteId))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_5))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</details></div>")
-			if err != nil {
-				return err
-			}
-		}
-		_, err = templBuffer.WriteString("<div><div>")
-		if err != nil {
-			return err
-		}
-		var var_6 string = websiteId
-		_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+		var var_3 string = websiteId
+		_, err = templBuffer.WriteString(templ.EscapeString(var_3))
 		if err != nil {
 			return err
 		}
@@ -103,7 +66,7 @@ func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) te
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4\"><input type=\"text\" id=\"threadId\" name=\"threadId\" value=\"")
+		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#chat-container\" class=\"space-y-4\"><input type=\"text\" id=\"threadId\" name=\"threadId\" value=\"")
 		if err != nil {
 			return err
 		}
@@ -123,12 +86,49 @@ func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) te
 		if err != nil {
 			return err
 		}
-		var_7 := `Ask this site:`
-		_, err = templBuffer.WriteString(var_7)
+		var_4 := `Ask this site:`
+		_, err = templBuffer.WriteString(var_4)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"message\" name=\"message\" value=\"\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></body></html>")
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"message\" name=\"message\" value=\"\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div><div id=\"chat-container\"></div>")
+		if err != nil {
+			return err
+		}
+		for _, item := range chats {
+			_, err = templBuffer.WriteString("<div class=\"p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div></div><details><summary class=\"cursor-pointer\">")
+			if err != nil {
+				return err
+			}
+			var var_5 string = item.Message
+			_, err = templBuffer.WriteString(templ.EscapeString(var_5))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</summary> ")
+			if err != nil {
+				return err
+			}
+			var var_6 string = strconv.Itoa(int(item.ThreadId))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" ")
+			if err != nil {
+				return err
+			}
+			var var_7 string = strconv.Itoa(int(item.WebsiteId))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_7))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</details></div>")
+			if err != nil {
+				return err
+			}
+		}
+		_, err = templBuffer.WriteString("</div></body></html>")
 		if err != nil {
 			return err
 		}

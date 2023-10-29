@@ -129,18 +129,22 @@ func presentChat() http.HandlerFunc {
 				return
 			}
 
-			queryRes, queryErr := db.QueryWebsite(message)
+			queryRes, queryErr := db.QueryWebsite(message, websiteId)
 			if queryErr != nil {
-				http.Error(w, "Query failed", http.StatusBadRequest)
+				http.Error(w, "QueryWebsite queryErr\n\n"+queryErr.Error(), http.StatusBadRequest)
 				return
 			}
 
-			insAIErr := db.InsertChat(Chat{ThreadId: threadId, Message: queryRes[0].String(), WebsiteId: websiteId})
+			queryComp := queryResult(queryRes, websiteIdStr)
 
-			if insAIErr != nil {
+			templ.Handler(queryComp).ServeHTTP(w, r)
+
+			//			insAIErr := db.InsertChat(Chat{ThreadId: threadId, Message: queryRes[0].String(), WebsiteId: websiteId})
+
+			/*if insAIErr != nil {
 				http.Error(w, "insAIErr failed", http.StatusBadRequest)
 				return
-			}
+			}*/
 		}
 
 		chats, pageErr := db.ListChats(threadId)
@@ -349,6 +353,10 @@ func processLink(ctx context.Context, baseLink string, db DB, website Website) {
 			if insertErr != nil {
 				log.Printf("Error saving link (maybe duplicate). Continuing %v: %v", link, insertErr)
 			} else {
+				updateErr := db.UpdateLink(Link{SourceURL: baseLink, URL: l, DateCreated: time.Now(), WebsiteId: website.ID})
+				if updateErr != nil {
+					panic(updateErr)
+				}
 				log.Printf("saved link %v", l)
 			}
 		}

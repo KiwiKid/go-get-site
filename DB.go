@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -124,6 +125,7 @@ func (db *DB) Migrate() {
 
 	err := db.conn.Exec(`
 		DO $$ 
+
 		BEGIN 
 			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
 				ALTER TABLE pgml.page DROP COLUMN embedding;
@@ -286,39 +288,57 @@ func (db *DB) ListChatThreads() ([]ChatThread, error) {
 	return chatThreads, nil
 }
 
-type QueryResult struct {
-	Result []byte `gorm:"type:jsonb"`
+type PageQueryResult struct {
+	ID       int
+	Content  string
+	URL      string
+	Keywords string
+	Rank     float64
 }
 
-func (qr QueryResult) String() string {
-	return string(qr.Result)
+func (qr PageQueryResult) String() string {
+	return qr.Content + " Rank:" + strconv.FormatFloat(qr.Rank, 'f', -1, 64)
 }
 
-func (db *DB) QueryWebsite(question string) ([]QueryResult, error) {
-	var queryResults []QueryResult
+func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, error) {
+	var queryResults []PageQueryResult
 
 	rawSQL := fmt.Sprintf(`
-    SELECT pgml.transform(
-        inputs => ARRAY[
-            '%s'
-        ],
-        task   => '{
-            "task": "question-answering", 
-            "model": "cardiffnlp/twitter-roberta-base-sentiment"
-        }'::JSONB
-    );`, question)
+    WITH request AS (
+		SELECT pgml.embed(
+			transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
+			text => $1,
+			kwargs => '{"device": "cuda"}'::jsonb
+		)::vector(384) AS embedding
+	  )
+	  SELECT
+		id,
+		content,
+		url,
+		keywords,
+		embedding <=> (SELECT embedding FROM request) AS cosine_similarity
+	  FROM pgml.page
+	  WHERE website_id = $2
+	  ORDER BY cosine_similarity ASC
+	  LIMIT 3`)
 
-	rows, err := db.conn.Raw(rawSQL).Rows() // Here we get the raw rows
+	rows, err := db.conn.Raw(rawSQL, question, websiteId).Rows() // Here we get the raw rows
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var qr QueryResult
-		if err := rows.Scan(&qr.Result); err != nil { // Manual scan
+		var rank float64
+		var Id int
+		var url string
+		var content string
+		var keywords string
+		if err := rows.Scan(&Id, &content, &url, &keywords, &rank); err != nil { // Manual scan into individual variables
 			return nil, err
 		}
+		log.Printf("rank %v Id %v content %s\n", rank, Id, content)
+		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, Rank: rank}
 		queryResults = append(queryResults, qr)
 	}
 
@@ -327,6 +347,11 @@ func (db *DB) QueryWebsite(question string) ([]QueryResult, error) {
 
 func (db *DB) InsertLink(link Link) error {
 	result := db.conn.Create(&link).Clauses(clause.OnConflict{UpdateAll: true})
+	return result.Error
+}
+
+func (db *DB) UpdateLink(link Link) error {
+	result := db.conn.Table("pgml.link").Where("id = ?").Updates(&link)
 	return result.Error
 }
 

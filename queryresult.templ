@@ -1,0 +1,22 @@
+package main
+
+import "strconv"
+
+templ queryResult(pageQueryResults []PageQueryResult, websiteIdStr string) {
+	<div class="bg-blue-600 p-4">
+		<div>{ websiteIdStr }</div>
+		<div class="container mx-auto">
+			for _, queryRes := range pageQueryResults {
+				<div class="p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50">
+					<div></div>
+					<details>
+						<summary class="cursor-pointer">{ strconv.Itoa(queryRes.ID) + strconv.FormatFloat(queryRes.Rank, 'f', -1, 64) }</summary>
+						{ queryRes.Keywords }
+						{ queryRes.Content }
+					</details>
+				</div>
+			}
+		</div>
+	</div>
+}
+
