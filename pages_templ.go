@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func pages(pages []Page, website Website, count LinkCountResult) templ.Component {
+func pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {

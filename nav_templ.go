@@ -35,7 +35,7 @@ func nav() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_3 := `Go Get Site`
+		var_3 := `Asker`
 		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err

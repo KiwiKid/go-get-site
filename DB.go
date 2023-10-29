@@ -31,24 +31,14 @@ func (Page) TableName() string {
 	return "pgml.page"
 }
 
-type Link struct {
-	ID            uint      `gorm:"primary_key"`
-	SourceURL     string    `gorm:"size:255"`
-	URL           string    `gorm:"size:255;unique"`
-	DateCreated   time.Time `gorm:"type:timestamp"`
-	LastProcessed time.Time `gorm:"type:timestamp"`
-	WebsiteId     uint      `gorm:"index;not null"`
-}
-
-func (Link) TableName() string {
-	return "pgml.link"
-}
-
 type Website struct {
 	ID               uint      `gorm:"primary_key"`
-	CustomQueryParam string    `gorm:"size:255"`
-	BaseUrl          string    `gorm:"size:255"`
+	CustomQueryParam string    `gorm:"size:1024"`
+	BaseUrl          string    `gorm:"size:1024"`
+	StartUrl         string    `gorm:"size:1024"`
 	DateCreated      time.Time `gorm:"type:timestamp"`
+	LoginName        string    `gorm:"size:255"`
+	LoginPass        string    `gorm:"size:255"`
 }
 
 func (Website) TableName() string {
@@ -106,7 +96,6 @@ func NewDB() (*DB, error) {
 func (db *DB) Migrate() {
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
 	db.conn.AutoMigrate(&Page{})
-	db.conn.AutoMigrate(&Link{})
 	db.conn.AutoMigrate(&Website{})
 	db.conn.AutoMigrate(&Chat{})
 	//db.conn.AutoMigrate(&Embedding{})
@@ -201,25 +190,33 @@ func (db *DB) ListWebsites() ([]Website, error) {
 	return websites, nil
 }
 
-func (db *DB) GetUnprocessedLinks(url string, limit int) ([]Link, error) {
-	var links []Link
+func (db *DB) GetPages(websiteId uint, page int, limit int, onlyUnprocessed bool) ([]Page, error) {
+	if limit <= 0 {
+		return nil, errors.New("invalid limit value")
+	}
+	if page <= 0 {
+		return nil, errors.New("invalid page value")
+	}
+	offset := (page - 1) * limit
 
-	urlQuer := url + "%"
-	oneMonthAgo := time.Now().AddDate(0, -1, 0)
-	// Refactor the JOIN and WHERE clauses to reflect the new requirement
-	result := db.conn.Table("pgml.link").
-		Joins("LEFT JOIN pgml.page ON pgml.page.url = pgml.link.url"). // Use LEFT JOIN
-		Where("pgml.link.url LIKE ?", urlQuer).
-		Where("pgml.page.url IS NULL OR LENGTH(pgml.page.content) = 0 OR pgml.page.content IS NULL"). // Either no matching record in page or content is NULL or has zero length
-		Where("(pgml.link.last_processed IS NULL OR pgml.link.last_processed <= ?)", oneMonthAgo).    // Either last_processed is NULL or it's older than a month
-		Limit(limit).
-		Find(&links)
+	afterDate := time.Now().Add(-7 * 24 * time.Hour)
 
-	if result.Error != nil {
-		return nil, result.Error
+	query := db.conn.
+		Where("WebsiteId = ?", websiteId).
+		Where("DateUpdated > ?", afterDate)
+
+	if onlyUnprocessed {
+		query = query.Where("LENGTH(Content) > 0")
 	}
 
-	return links, nil
+	var pages []Page
+	err := query.
+		Order("DateUpdated ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&pages).Error
+
+	return pages, err
 }
 
 func (db *DB) SetLinkProcessed(url string) error {
@@ -291,6 +288,7 @@ func (db *DB) ListChatThreads() ([]ChatThread, error) {
 type PageQueryResult struct {
 	ID       int
 	Content  string
+	Title    string
 	URL      string
 	Keywords string
 	Rank     float64
@@ -314,6 +312,7 @@ func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, 
 	  SELECT
 		id,
 		content,
+		title,
 		url,
 		keywords,
 		embedding <=> (SELECT embedding FROM request) AS cosine_similarity
@@ -333,31 +332,17 @@ func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, 
 		var Id int
 		var url string
 		var content string
+		var title string
 		var keywords string
-		if err := rows.Scan(&Id, &content, &url, &keywords, &rank); err != nil { // Manual scan into individual variables
+		if err := rows.Scan(&Id, &content, &title, &url, &keywords, &rank); err != nil { // Manual scan into individual variables
 			return nil, err
 		}
 		log.Printf("rank %v Id %v content %s\n", rank, Id, content)
-		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, Rank: rank}
+		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, Rank: rank, Title: title}
 		queryResults = append(queryResults, qr)
 	}
 
 	return queryResults, nil
-}
-
-func (db *DB) InsertLink(link Link) error {
-	result := db.conn.Create(&link).Clauses(clause.OnConflict{UpdateAll: true})
-	return result.Error
-}
-
-func (db *DB) UpdateLink(link Link) error {
-	result := db.conn.Table("pgml.link").Where("id = ?").Updates(&link)
-	return result.Error
-}
-
-func (db *DB) unProcessLink(url string) error {
-	log.Print("unProcessLink")
-	return db.conn.Model(&Link{}).Where("url = ?", url).Update("last_processed", "1970-01-01 00:00:00 UTC").Error
 }
 
 type LinkCountResult struct {

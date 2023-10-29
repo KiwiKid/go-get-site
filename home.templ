@@ -19,7 +19,12 @@ templ home(websiteUrls []Website) {
 						<form hx-post="/" hx-swap="outerHTML" hx-target="#container" class="space-y-4">
 							<label for="websiteUrl" class="block text-sm font-medium text-gray-600">Website Url:</label>
 							<input type="url" id="websiteUrl" name="websiteUrl" pattern="^https?://.*" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
-							<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+							<details>
+								<summary>Extended Options</summary>
+								<label for="customQueryParams" class="block text-sm font-medium text-gray-600">Custom Query Params:</label>
+								<input type="text" id="customQueryParams" name="customQueryParams" class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+								<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+							</details>
 						</form>
 					</div>
 				</div>

@@ -1,5 +1,5 @@
 package main
-templ pages(pages []Page, website Website, count LinkCountResult) {
+templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string) {
     <html>
     @header()
     <body class="bg-gray-100" id="container">

@@ -84,7 +84,25 @@ func home(websiteUrls []Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"websiteUrl\" name=\"websiteUrl\" pattern=\"^https?://.*\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></main></body></html>")
+		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"websiteUrl\" name=\"websiteUrl\" pattern=\"^https?://.*\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><details><summary>")
+		if err != nil {
+			return err
+		}
+		var_6 := `Extended Options`
+		_, err = templBuffer.WriteString(var_6)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</summary><label for=\"customQueryParams\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_7 := `Custom Query Params:`
+		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"customQueryParams\" name=\"customQueryParams\" class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></details></form></div></div></main></body></html>")
 		if err != nil {
 			return err
 		}
