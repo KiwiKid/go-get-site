@@ -1,6 +1,6 @@
 package main
 
-templ home(websiteUrls []Website) {
+templ home(websiteUrls []Website, createdSite uint) {
 	<html>
 		@header()
 		<body id="container">
@@ -10,7 +10,14 @@ templ home(websiteUrls []Website) {
 					<ul>
 						for _, webUrl := range websiteUrls {
 							<li class="mb-2">
+								if webUrl.ID == createdSite {
+									<div>new</div>
+								}
 								<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websiteURL()) }>{ webUrl.BaseUrl }</a>
+								<form hx-delete="/" hx-swap="outerHTML" hx-include="[websiteID=&#39;#l.&#39;D39&#39;#l.&#39;D39&#39;#l.&#39;D)}&#39;]" hx-target="#container">
+									<input type="text" id="websiteId" value={ string(webUrl.ID) }/>
+									<button type="submit" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">delete</button>
+								</form>
 							</li>
 						}
 					</ul>
@@ -23,8 +30,8 @@ templ home(websiteUrls []Website) {
 								<summary>Extended Options</summary>
 								<label for="customQueryParams" class="block text-sm font-medium text-gray-600">Custom Query Params:</label>
 								<input type="text" id="customQueryParams" name="customQueryParams" class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
-								<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 							</details>
+							<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 						</form>
 					</div>
 				</div>

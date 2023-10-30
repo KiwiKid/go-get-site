@@ -71,11 +71,11 @@ func (w *Website) websiteURL() string {
 }
 
 func (w *ChatThread) ChatThreadURL() string {
-	return fmt.Sprintf("/chat/%d", w.ThreadId)
+	return fmt.Sprintf("/search/%d", w.ThreadId)
 }
 
 func (w *Chat) ChatURL() string {
-	return fmt.Sprintf("/chat/%d", w.ThreadId)
+	return fmt.Sprintf("/search/%d", w.ThreadId)
 }
 
 type DB struct {
@@ -149,6 +149,25 @@ func (db *DB) InsertWebsite(website Website) (Website, error) {
 	return website, nil
 }
 
+func (db *DB) DeleteWebsite(websiteId uint) error {
+	webDelErr := db.conn.Delete(Website{}, "website_id = ?", websiteId)
+	if webDelErr.Error != nil {
+		log.Print(webDelErr.Error)
+		return webDelErr.Error
+	}
+	pageDelErr := db.conn.Delete(Page{}, "website_id = ?", websiteId)
+	if pageDelErr.Error != nil {
+		log.Print(pageDelErr.Error)
+		return pageDelErr.Error
+	}
+	chatDelErr := db.conn.Delete(Chat{}, "website_id = ?", websiteId)
+	if chatDelErr.Error != nil {
+		log.Print(chatDelErr.Error)
+		return chatDelErr.Error
+	}
+	return nil
+}
+
 func (db *DB) GetWebsite(id uint) (*Website, error) {
 	var website Website
 	result := db.conn.First(&website, id)
@@ -190,7 +209,7 @@ func (db *DB) ListWebsites() ([]Website, error) {
 	return websites, nil
 }
 
-func (db *DB) GetPages(websiteId uint, page int, limit int, onlyUnprocessed bool) ([]Page, error) {
+func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterDate time.Time) ([]Page, error) {
 	if limit <= 0 {
 		return nil, errors.New("invalid limit value")
 	}
@@ -199,19 +218,17 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, onlyUnprocessed bool
 	}
 	offset := (page - 1) * limit
 
-	afterDate := time.Now().Add(-7 * 24 * time.Hour)
-
 	query := db.conn.
-		Where("WebsiteId = ?", websiteId).
-		Where("DateUpdated > ?", afterDate)
+		Where("website_id = ?", websiteId)
 
-	if onlyUnprocessed {
-		query = query.Where("LENGTH(Content) > 0")
+	if !processAll {
+		query = query.Where("LENGTH(content) > 0")
+		query = query.Where("date_updated > ?", afterDate)
 	}
 
 	var pages []Page
 	err := query.
-		Order("DateUpdated ASC").
+		Order("date_updated ASC").
 		Limit(limit).
 		Offset(offset).
 		Find(&pages).Error
@@ -359,7 +376,6 @@ func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 	}
 
 	log.Print("CountLinksAndPages")
-	log.Print(websiteId)
 
 	// Count links that have pages for the URL
 	var linksWithPages int64

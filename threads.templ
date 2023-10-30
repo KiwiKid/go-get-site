@@ -8,7 +8,7 @@ templ threads(threads []ChatThread, newThreadURL string, websites []Website) {
 		<body id="container">
 			@nav()
 			<main class="flex justify-center mt-6">
-				<div hx-swap="outerHTML">
+				<aside class="w-1/4 border-r border-gray-200 p-4">
 					<h1>Threads</h1>
 					for _, thread := range threads {
 						<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
@@ -17,18 +17,26 @@ templ threads(threads []ChatThread, newThreadURL string, websites []Website) {
 							</div>
 						</div>
 					}
+				</aside>
+				<!-- Main content area -->
+				<div class="w-3/4 p-4" hx-swap="outerHTML">
 					<div class="mt-16">
-						<div class="text-gray-700 font-bold mb-4">A new Chat:</div>
+						<div class="text-gray-700 font-bold mb-4">Search:</div>
 						<form hx-post={ newThreadURL } hx-swap="outerHTML" hx-target="#container" class="space-y-4">
-							<label for="websiteUrl" class="block text-sm font-medium text-gray-600">WebsiteUrl:</label>
-							<select name="websiteId">
+							<fieldset class="space-y-4">
+								<legend class="block text-sm font-medium text-gray-600">WebsiteUrl:</legend>
 								for _, website := range websites {
-									<option value={ strconv.FormatUint(uint64(website.ID), 10) }>{ website.BaseUrl }</option>
+									<label class="block">
+										<input type="radio" name="websiteId" value={ strconv.FormatUint(uint64(website.ID), 10) }/>
+										{ website.BaseUrl }
+									</label>
 								}
-							</select>
-							<label for="text" class="block text-sm font-medium text-gray-600">Message</label>
-							<input type="text" id="Message" name="message" value="" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
-							<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+							</fieldset>
+							<div class="space-y-4">
+								<label for="query" class="block text-sm font-medium text-gray-600">Query</label>
+								<input type="text" id="query" name="query" value="" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+								<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+							</div>
 						</form>
 					</div>
 				</div>

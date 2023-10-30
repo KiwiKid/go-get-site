@@ -39,8 +39,8 @@ func main() {
 
 	r.Handle("/", presentHome()).Methods("GET", "POST")
 
-	r.Handle("/chat", presentChat()).Methods("GET", "POST")
-	r.Handle("/chat/{threadId}", presentChat()).Methods("GET", "POST")
+	r.Handle("/search", presentChat()).Methods("GET", "POST")
+	r.Handle("/search/{threadId}", presentChat()).Methods("GET", "POST")
 
 	r.Handle("/progress", presentLinkCount())
 	r.Use(func(next http.Handler) http.Handler {
@@ -94,7 +94,7 @@ func presentChat() http.HandlerFunc {
 			rand.Seed(time.Now().UnixNano())
 			randomValue := uint(rand.Uint32())
 			randomValueStr := strconv.FormatUint(uint64(randomValue), 10)
-			newThreadURL := "/chat/" + randomValueStr
+			newThreadURL := "/search/" + randomValueStr
 
 			websites, pageErr := db.ListWebsites()
 			if err != nil {
@@ -122,20 +122,20 @@ func presentChat() http.HandlerFunc {
 				http.Error(w, "Failed based on websiteId", http.StatusInternalServerError)
 				return
 			}
-			message := r.FormValue("message")
-			insErr := db.InsertChat(Chat{ThreadId: threadId, Message: message, WebsiteId: websiteId})
+			query := r.FormValue("query")
+			insErr := db.InsertChat(Chat{ThreadId: threadId, Message: query, WebsiteId: websiteId})
 			if insErr != nil {
 				http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
 				return
 			}
 
-			queryRes, queryErr := db.QueryWebsite(message, websiteId)
+			queryRes, queryErr := db.QueryWebsite(query, websiteId)
 			if queryErr != nil {
 				http.Error(w, "QueryWebsite queryErr\n\n"+queryErr.Error(), http.StatusBadRequest)
 				return
 			}
 
-			queryComp := queryResult(queryRes, websiteIdStr, message)
+			queryComp := queryResult(queryRes, websiteIdStr, query)
 
 			templ.Handler(queryComp).ServeHTTP(w, r)
 
@@ -164,6 +164,7 @@ func presentChat() http.HandlerFunc {
 
 func presentHome() http.HandlerFunc {
 	log.Print("PresentHome")
+	var newSiteId uint
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Print("PresentHome - NewDB")
@@ -172,46 +173,71 @@ func presentHome() http.HandlerFunc {
 			panic(err)
 		}
 
-		if r.Method == http.MethodPost {
-			log.Print("PresentHome - NewDB MethodPost")
-			// Parse the form data to retrieve 'websiteUrl'
-			err := r.ParseForm()
-			if err != nil {
-				http.Error(w, "Failed to parse form", http.StatusBadRequest)
-				return
+		switch r.Method {
+		case http.MethodPost:
+			{
+				log.Print("PresentHome - NewDB MethodPost")
+				// Parse the form data to retrieve 'websiteUrl'
+				err := r.ParseForm()
+				if err != nil {
+					http.Error(w, "Failed to parse form", http.StatusBadRequest)
+					return
+				}
+
+				websiteUrl := r.FormValue("websiteUrl")
+				if websiteUrl == "" {
+					http.Error(w, "websiteUrl is required", http.StatusBadRequest)
+					return
+				}
+				customQueryParams := r.FormValue("customQueryParams")
+
+				site, err := db.InsertWebsite(Website{BaseUrl: websiteUrl, CustomQueryParam: customQueryParams})
+				if err != nil {
+					http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
+					return
+				}
+
+				newSiteId = site.ID
+
+				insertPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID})
+				if insertPageErr != nil {
+					http.Error(w, "InsertPage is failed", http.StatusBadRequest)
+					return
+				}
+
+				/*insertErr := db.InsertLink(Link{URL: websiteUrl, SourceURL: websiteUrl})
+				if insertErr != nil {
+					log.Printf("Error InsertLink 1 %s: %v", websiteUrl, insertErr)
+					//http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
+					//		return
+				}*/
+
+				/*insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteUrl, IsSeedUrl: true, WebsiteId: site.ID})
+				 */
+				log.Printf("INSERT DATES MethodPost %v", site)
+
 			}
-
-			websiteUrl := r.FormValue("websiteUrl")
-			if websiteUrl == "" {
-				http.Error(w, "websiteUrl is required", http.StatusBadRequest)
-				return
+		case http.MethodDelete:
+			{
+				websiteIdStr := r.FormValue("websiteId")
+				websiteId, err := stringToUint(websiteIdStr)
+				if err != nil {
+					http.Error(w, "stringToUint is failed", http.StatusBadRequest)
+					return
+				}
+				insertPageErr := db.DeleteWebsite(websiteId)
+				if insertPageErr != nil {
+					http.Error(w, "InsertPage is failed", http.StatusBadRequest)
+					return
+				}
 			}
-			customQueryParams := r.FormValue("customQueryParams")
-
-			site, err := db.InsertWebsite(Website{BaseUrl: websiteUrl, CustomQueryParam: customQueryParams})
-			if err != nil {
-				http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
-				return
-			}
-
-			/*insertErr := db.InsertLink(Link{URL: websiteUrl, SourceURL: websiteUrl})
-			if insertErr != nil {
-				log.Printf("Error InsertLink 1 %s: %v", websiteUrl, insertErr)
-				//http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
-				//		return
-			}*/
-
-			/*insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteUrl, IsSeedUrl: true, WebsiteId: site.ID})
-			 */
-			log.Printf("INSERT DATES MethodPost %v", site)
-
 		}
 
 		websites, pageErr := db.ListWebsites()
 		if err != nil {
 			panic(pageErr)
 		}
-		homeComp := home(websites)
+		homeComp := home(websites, newSiteId)
 
 		templ.Handler(homeComp).ServeHTTP(w, r)
 	}
@@ -340,9 +366,10 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 				log.Printf("Error unProcessLink link %s: %v", website.BaseUrl, unProcess)
 				// return
 			}*/
+			processAll := r.FormValue("processAll") == "on"
 
-			log.Print("handlePages - processWebsite")
-			processErr := processWebsite(ctx, *db, *website)
+			log.Printf("handlePages - processWebsite processAll:%v", processAll)
+			processErr := processWebsite(ctx, *db, *website, processAll)
 			if processErr != nil {
 				http.Error(w, "Failed to processWebsite", http.StatusInternalServerError)
 				return
@@ -379,10 +406,16 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 	}
 }
 
-func processWebsite(ctx context.Context, db DB, website Website) error {
-	log.Print("StartProcessingSite", website.BaseUrl)
+func processWebsite(ctx context.Context, db DB, website Website, processAll bool) error {
+	log.Print("StartProcessingSite ", website.BaseUrl)
+	var pageUpdatedAfter time.Time
+	if processAll {
+		pageUpdatedAfter = time.Now().Add(-365 * 24 * time.Hour)
+	} else {
+		pageUpdatedAfter = time.Now().Add(-7 * 24 * time.Hour)
+	}
 
-	pagesToProcess, err := db.GetPages(website.ID, 0, 25, true)
+	pagesToProcess, err := db.GetPages(website.ID, 1, 5, processAll, pageUpdatedAfter)
 	log.Printf("linksToProcess: %d", len(pagesToProcess))
 	if err != nil {
 		log.Printf("Error GetLink from %v", err)
@@ -390,7 +423,7 @@ func processWebsite(ctx context.Context, db DB, website Website) error {
 	}
 
 	if len(pagesToProcess) > 0 {
-		pagesToSave, err := fetchContentFromPages(ctx, website, pagesToProcess, 100)
+		pagesToSave, err := fetchContentFromPages(ctx, website, pagesToProcess, 5)
 		log.Printf("Got %d pagesToSave from fetchContentFromPages %v", len(pagesToSave), err)
 
 		for _, page := range pagesToSave {

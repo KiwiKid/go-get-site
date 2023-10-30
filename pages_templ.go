@@ -74,7 +74,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</a><button hx-post=\"")
+		_, err = templBuffer.WriteString("</a><form hx-post=\"")
 		if err != nil {
 			return err
 		}
@@ -82,16 +82,25 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("\" hx-target=\"#container\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\">")
+		_, err = templBuffer.WriteString("\" hx-target=\"#container\"><button type=\"submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\">")
 		if err != nil {
 			return err
 		}
-		var_6 := `Process`
+		var_6 := `Re-fresh content`
 		_, err = templBuffer.WriteString(var_6)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</button>")
+		_, err = templBuffer.WriteString("</button><label for=\"processAll\">")
+		if err != nil {
+			return err
+		}
+		var_7 := `[ALL]`
+		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"checkbox\" name=\"processAll\" id=\"processAll\"></form>")
 		if err != nil {
 			return err
 		}
@@ -103,8 +112,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		var_7 := ` Flexbox header - Can be omitted if not required `
-		_, err = templBuffer.WriteString(var_7)
+		var_8 := ` Flexbox header - Can be omitted if not required `
+		_, err = templBuffer.WriteString(var_8)
 		if err != nil {
 			return err
 		}
@@ -112,16 +121,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		var_8 := `URL`
-		_, err = templBuffer.WriteString(var_8)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
-		if err != nil {
-			return err
-		}
-		var_9 := `Keywords`
+		var_9 := `URL`
 		_, err = templBuffer.WriteString(var_9)
 		if err != nil {
 			return err
@@ -130,17 +130,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		var_10 := `Title`
+		var_10 := `Keywords`
 		_, err = templBuffer.WriteString(var_10)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\">")
-		if err != nil {
-			return err
-		}
-		var_11 := `Content`
-		_, err = templBuffer.WriteString(var_11)
 		if err != nil {
 			return err
 		}
@@ -148,7 +139,16 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		var_12 := `Date Created`
+		var_11 := `Title`
+		_, err = templBuffer.WriteString(var_11)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-2 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_12 := `Content`
 		_, err = templBuffer.WriteString(var_12)
 		if err != nil {
 			return err
@@ -157,8 +157,17 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		var_13 := `Date Updated`
+		var_13 := `Date Created`
 		_, err = templBuffer.WriteString(var_13)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div class=\"flex-1 p-2\">")
+		if err != nil {
+			return err
+		}
+		var_14 := `Date Updated`
+		_, err = templBuffer.WriteString(var_14)
 		if err != nil {
 			return err
 		}
@@ -171,8 +180,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_14 templ.SafeURL = templ.SafeURL(item.URL)
-			_, err = templBuffer.WriteString(templ.EscapeString(string(var_14)))
+			var var_15 templ.SafeURL = templ.SafeURL(item.URL)
+			_, err = templBuffer.WriteString(templ.EscapeString(string(var_15)))
 			if err != nil {
 				return err
 			}
@@ -180,8 +189,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_15 string = item.URL
-			_, err = templBuffer.WriteString(templ.EscapeString(var_15))
+			var var_16 string = item.URL
+			_, err = templBuffer.WriteString(templ.EscapeString(var_16))
 			if err != nil {
 				return err
 			}
@@ -189,8 +198,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_16 string = item.Keywords
-			_, err = templBuffer.WriteString(templ.EscapeString(var_16))
+			var var_17 string = item.Keywords
+			_, err = templBuffer.WriteString(templ.EscapeString(var_17))
 			if err != nil {
 				return err
 			}
@@ -198,8 +207,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_17 string = item.Title
-			_, err = templBuffer.WriteString(templ.EscapeString(var_17))
+			var var_18 string = item.Title
+			_, err = templBuffer.WriteString(templ.EscapeString(var_18))
 			if err != nil {
 				return err
 			}
@@ -207,8 +216,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var_18 := `View Content`
-			_, err = templBuffer.WriteString(var_18)
+			var_19 := `View Content`
+			_, err = templBuffer.WriteString(var_19)
 			if err != nil {
 				return err
 			}
@@ -216,8 +225,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_19 string = item.Content
-			_, err = templBuffer.WriteString(templ.EscapeString(var_19))
+			var var_20 string = item.Content
+			_, err = templBuffer.WriteString(templ.EscapeString(var_20))
 			if err != nil {
 				return err
 			}
@@ -225,8 +234,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_20 string = item.DateCreated.Local().String()
-			_, err = templBuffer.WriteString(templ.EscapeString(var_20))
+			var var_21 string = item.DateCreated.Local().String()
+			_, err = templBuffer.WriteString(templ.EscapeString(var_21))
 			if err != nil {
 				return err
 			}
@@ -234,8 +243,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_21 string = item.DateUpdated.Local().String()
-			_, err = templBuffer.WriteString(templ.EscapeString(var_21))
+			var var_22 string = item.DateUpdated.Local().String()
+			_, err = templBuffer.WriteString(templ.EscapeString(var_22))
 			if err != nil {
 				return err
 			}

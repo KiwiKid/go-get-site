@@ -40,7 +40,7 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<main class=\"flex justify-center mt-6\"><div hx-swap=\"outerHTML\"><h1>")
+		_, err = templBuffer.WriteString("<main class=\"flex justify-center mt-6\"><aside class=\"w-1/4 border-r border-gray-200 p-4\"><h1>")
 		if err != nil {
 			return err
 		}
@@ -91,12 +91,21 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString("<div class=\"mt-16\"><div class=\"text-gray-700 font-bold mb-4\">")
+		_, err = templBuffer.WriteString("</aside><!--")
 		if err != nil {
 			return err
 		}
-		var_7 := `A new Chat:`
+		var_7 := ` Main content area `
 		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("--><div class=\"w-3/4 p-4\" hx-swap=\"outerHTML\"><div class=\"mt-16\"><div class=\"text-gray-700 font-bold mb-4\">")
+		if err != nil {
+			return err
+		}
+		var_8 := `Search:`
+		_, err = templBuffer.WriteString(var_8)
 		if err != nil {
 			return err
 		}
@@ -108,21 +117,21 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4\"><label for=\"websiteUrl\" class=\"block text-sm font-medium text-gray-600\">")
+		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4\"><fieldset class=\"space-y-4\"><legend class=\"block text-sm font-medium text-gray-600\">")
 		if err != nil {
 			return err
 		}
-		var_8 := `WebsiteUrl:`
-		_, err = templBuffer.WriteString(var_8)
+		var_9 := `WebsiteUrl:`
+		_, err = templBuffer.WriteString(var_9)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><select name=\"websiteId\">")
+		_, err = templBuffer.WriteString("</legend>")
 		if err != nil {
 			return err
 		}
 		for _, website := range websites {
-			_, err = templBuffer.WriteString("<option value=\"")
+			_, err = templBuffer.WriteString("<label class=\"block\"><input type=\"radio\" name=\"websiteId\" value=\"")
 			if err != nil {
 				return err
 			}
@@ -130,30 +139,30 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\">")
+			_, err = templBuffer.WriteString("\"> ")
 			if err != nil {
 				return err
 			}
-			var var_9 string = website.BaseUrl
-			_, err = templBuffer.WriteString(templ.EscapeString(var_9))
+			var var_10 string = website.BaseUrl
+			_, err = templBuffer.WriteString(templ.EscapeString(var_10))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</option>")
+			_, err = templBuffer.WriteString("</label>")
 			if err != nil {
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString("</select><label for=\"text\" class=\"block text-sm font-medium text-gray-600\">")
+		_, err = templBuffer.WriteString("</fieldset><div class=\"space-y-4\"><label for=\"query\" class=\"block text-sm font-medium text-gray-600\">")
 		if err != nil {
 			return err
 		}
-		var_10 := `Message`
-		_, err = templBuffer.WriteString(var_10)
+		var_11 := `Query`
+		_, err = templBuffer.WriteString(var_11)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"Message\" name=\"message\" value=\"\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></main></body></html>")
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"query\" name=\"query\" value=\"\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div></form></div></div></main></body></html>")
 		if err != nil {
 			return err
 		}
