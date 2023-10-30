@@ -43,7 +43,7 @@ func home(websiteUrls []Website, createdSite uint) templ.Component {
 			return err
 		}
 		for _, webUrl := range websiteUrls {
-			_, err = templBuffer.WriteString("<li class=\"mb-2\">")
+			_, err = templBuffer.WriteString("<li class=\"mb-2\"><div>")
 			if err != nil {
 				return err
 			}
@@ -52,7 +52,7 @@ func home(websiteUrls []Website, createdSite uint) templ.Component {
 				if err != nil {
 					return err
 				}
-				var_2 := `new`
+				var_2 := `(created)`
 				_, err = templBuffer.WriteString(var_2)
 				if err != nil {
 					return err
@@ -66,7 +66,7 @@ func home(websiteUrls []Website, createdSite uint) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_3 templ.SafeURL = templ.URL(webUrl.websiteURL())
+			var var_3 templ.SafeURL = templ.URL(webUrl.websitePagesURL())
 			_, err = templBuffer.WriteString(templ.EscapeString(string(var_3)))
 			if err != nil {
 				return err
@@ -80,15 +80,15 @@ func home(websiteUrls []Website, createdSite uint) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</a><form hx-delete=\"/\" hx-swap=\"outerHTML\" hx-include=\"[websiteID=&#39;#l.&#39;D39&#39;#l.&#39;D39&#39;#l.&#39;D)}&#39;]\" hx-target=\"#container\"><input type=\"text\" id=\"websiteId\" value=\"")
+			_, err = templBuffer.WriteString("</a><form hx-delete=\"")
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString(templ.EscapeString(string(webUrl.ID)))
+			_, err = templBuffer.WriteString(templ.EscapeString(webUrl.websiteURL()))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\"><button type=\"submit\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
+			_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\"><input type=\"text\" id=\"websiteId\"><button type=\"submit\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
 			if err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ func home(websiteUrls []Website, createdSite uint) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</button></form></li>")
+			_, err = templBuffer.WriteString("</button></form></div></li>")
 			if err != nil {
 				return err
 			}

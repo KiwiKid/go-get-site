@@ -70,6 +70,10 @@ func (w *Website) websiteURL() string {
 	return fmt.Sprintf("/site/%d", w.ID)
 }
 
+func (w *Website) websitePagesURL() string {
+	return fmt.Sprintf("/site/%d/pages", w.ID)
+}
+
 func (w *ChatThread) ChatThreadURL() string {
 	return fmt.Sprintf("/search/%d", w.ThreadId)
 }
@@ -150,21 +154,22 @@ func (db *DB) InsertWebsite(website Website) (Website, error) {
 }
 
 func (db *DB) DeleteWebsite(websiteId uint) error {
-	webDelErr := db.conn.Delete(Website{}, "website_id = ?", websiteId)
-	if webDelErr.Error != nil {
-		log.Print(webDelErr.Error)
-		return webDelErr.Error
+	chatDelErr := db.conn.Delete(Chat{}, "website_id = ?", websiteId)
+	if chatDelErr.Error != nil {
+		log.Print(chatDelErr.Error)
+		return chatDelErr.Error
 	}
 	pageDelErr := db.conn.Delete(Page{}, "website_id = ?", websiteId)
 	if pageDelErr.Error != nil {
 		log.Print(pageDelErr.Error)
 		return pageDelErr.Error
 	}
-	chatDelErr := db.conn.Delete(Chat{}, "website_id = ?", websiteId)
-	if chatDelErr.Error != nil {
-		log.Print(chatDelErr.Error)
-		return chatDelErr.Error
+	webDelErr := db.conn.Delete(Website{}, "id = ?", websiteId)
+	if webDelErr.Error != nil {
+		log.Print(webDelErr.Error)
+		return webDelErr.Error
 	}
+
 	return nil
 }
 

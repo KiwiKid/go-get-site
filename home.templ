@@ -10,14 +10,16 @@ templ home(websiteUrls []Website, createdSite uint) {
 					<ul>
 						for _, webUrl := range websiteUrls {
 							<li class="mb-2">
-								if webUrl.ID == createdSite {
-									<div>new</div>
-								}
-								<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websiteURL()) }>{ webUrl.BaseUrl }</a>
-								<form hx-delete="/" hx-swap="outerHTML" hx-include="[websiteID=&#39;#l.&#39;D39&#39;#l.&#39;D39&#39;#l.&#39;D)}&#39;]" hx-target="#container">
-									<input type="text" id="websiteId" value={ string(webUrl.ID) }/>
-									<button type="submit" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">delete</button>
-								</form>
+								<div>
+									if webUrl.ID == createdSite {
+										<div>(created)</div>
+									}
+									<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websitePagesURL()) }>{ webUrl.BaseUrl }</a>
+									<form hx-delete={ webUrl.websiteURL() } hx-swap="outerHTML" hx-target="#container">
+										<input type="text" id="websiteId"  />
+										<button type="submit" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">delete</button>
+									</form>
+								</div>
 							</li>
 						}
 					</ul>

@@ -35,9 +35,11 @@ func main() {
 
 	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
-	r.HandleFunc("/site/{websiteId}", handlePages(ctx)).Methods("GET", "POST")
 
-	r.Handle("/", presentHome()).Methods("GET", "POST")
+	r.Handle("/", presentWebsite()).Methods("GET", "POST")
+	r.HandleFunc("/site/{websiteId}", presentWebsite()).Methods("GET", "POST", "DELETE")
+
+	r.HandleFunc("/site/{websiteId}/pages", handlePages(ctx)).Methods("GET", "POST")
 
 	r.Handle("/search", presentChat()).Methods("GET", "POST")
 	r.Handle("/search/{threadId}", presentChat()).Methods("GET", "POST")
@@ -162,7 +164,7 @@ func presentChat() http.HandlerFunc {
 	}
 }
 
-func presentHome() http.HandlerFunc {
+func presentWebsite() http.HandlerFunc {
 	log.Print("PresentHome")
 	var newSiteId uint
 
@@ -219,7 +221,9 @@ func presentHome() http.HandlerFunc {
 			}
 		case http.MethodDelete:
 			{
-				websiteIdStr := r.FormValue("websiteId")
+
+				vars := mux.Vars(r)
+				websiteIdStr := vars["websiteId"]
 				websiteId, err := stringToUint(websiteIdStr)
 				if err != nil {
 					http.Error(w, "stringToUint is failed", http.StatusBadRequest)
@@ -396,9 +400,9 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		thisPageUrl := fmt.Sprintf("/site/%d?page=%d&pageSize=%d", website.ID, page, pageSize)
-		prevPageUrl := fmt.Sprintf("/site/%d?page=%d&pageSize=%d", website.ID, page, pageSize)
-		nextPageUrl := fmt.Sprintf("/site/%d?page=%d&pageSize=%d", website.ID, page, pageSize)
+		thisPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
+		prevPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
+		nextPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
 
 		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl)
 
