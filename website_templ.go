@@ -53,7 +53,7 @@ func websiteList(websites []Website) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\"><input type=\"text\" id=\"websiteId\"><button type=\"submit\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
+			_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" hx-indicator=\"#loadingText\"><input type=\"text\" id=\"websiteId\"><button type=\"submit\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
 			if err != nil {
 				return err
 			}
@@ -62,7 +62,16 @@ func websiteList(websites []Website) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</button></form></div></li>")
+			_, err = templBuffer.WriteString("</button><div id=\"loadingText\" style=\"display:none\">")
+			if err != nil {
+				return err
+			}
+			var_5 := `Loading...`
+			_, err = templBuffer.WriteString(var_5)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div></form></div></li>")
 			if err != nil {
 				return err
 			}
@@ -86,17 +95,17 @@ func website(website Website) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_5 := templ.GetChildren(ctx)
-		if var_5 == nil {
-			var_5 = templ.NopComponent
+		var_6 := templ.GetChildren(ctx)
+		if var_6 == nil {
+			var_6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div><div class=\"mt-8\"><div class=\"text-gray-700 font-bold mb-4\">")
 		if err != nil {
 			return err
 		}
-		var_6 := `A new site url:`
-		_, err = templBuffer.WriteString(var_6)
+		var_7 := `A new site url:`
+		_, err = templBuffer.WriteString(var_7)
 		if err != nil {
 			return err
 		}
@@ -104,8 +113,8 @@ func website(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_7 := `Website Url:`
-		_, err = templBuffer.WriteString(var_7)
+		var_8 := `Website Url:`
+		_, err = templBuffer.WriteString(var_8)
 		if err != nil {
 			return err
 		}
@@ -113,8 +122,8 @@ func website(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_8 := `Extended Options`
-		_, err = templBuffer.WriteString(var_8)
+		var_9 := `Extended Options`
+		_, err = templBuffer.WriteString(var_9)
 		if err != nil {
 			return err
 		}
@@ -122,8 +131,8 @@ func website(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_9 := `Custom Query Params:`
-		_, err = templBuffer.WriteString(var_9)
+		var_10 := `Custom Query Params:`
+		_, err = templBuffer.WriteString(var_10)
 		if err != nil {
 			return err
 		}
@@ -146,17 +155,17 @@ func newWebsite() templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_10 := templ.GetChildren(ctx)
-		if var_10 == nil {
-			var_10 = templ.NopComponent
+		var_11 := templ.GetChildren(ctx)
+		if var_11 == nil {
+			var_11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div><div class=\"mt-8\"><div class=\"text-gray-700 font-bold mb-4\">")
 		if err != nil {
 			return err
 		}
-		var_11 := `A new site url:`
-		_, err = templBuffer.WriteString(var_11)
+		var_12 := `A new site url:`
+		_, err = templBuffer.WriteString(var_12)
 		if err != nil {
 			return err
 		}
@@ -164,8 +173,8 @@ func newWebsite() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_12 := `Website Url:`
-		_, err = templBuffer.WriteString(var_12)
+		var_13 := `Website Url:`
+		_, err = templBuffer.WriteString(var_13)
 		if err != nil {
 			return err
 		}
@@ -173,8 +182,8 @@ func newWebsite() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_13 := `Extended Options`
-		_, err = templBuffer.WriteString(var_13)
+		var_14 := `Extended Options`
+		_, err = templBuffer.WriteString(var_14)
 		if err != nil {
 			return err
 		}
@@ -182,8 +191,8 @@ func newWebsite() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_14 := `Custom Query Params:`
-		_, err = templBuffer.WriteString(var_14)
+		var_15 := `Custom Query Params:`
+		_, err = templBuffer.WriteString(var_15)
 		if err != nil {
 			return err
 		}

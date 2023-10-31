@@ -1,21 +1,22 @@
 package main
 
-templ websiteList(websites []Website) { 
+templ websiteList(websites []Website) {
 	<div>
 		<ul>
-		for _, webUrl := range websites {
-		<li class="mb-2">
-			<div>
-				<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websitePagesURL()) }>{ webUrl.BaseUrl }</a>
-				<form hx-delete={ webUrl.websiteURL() } hx-swap="outerHTML" hx-target="#container">
-					<input type="text" id="websiteId"/>
-					<button type="submit" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">delete</button>
-				</form>
-			</div>
-		</li>
-		}
-	</ul>
-</div>
+			for _, webUrl := range websites {
+				<li class="mb-2">
+					<div>
+						<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websitePagesURL()) }>{ webUrl.BaseUrl }</a>
+						<form hx-delete={ webUrl.websiteURL() } hx-swap="outerHTML" hx-target="#container" hx-indicator="#loadingText">
+							<input type="text" id="websiteId"/>
+							<button type="submit" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">delete</button>
+							<div id="loadingText" style="display:none">Loading...</div>
+						</form>
+					</div>
+				</li>
+			}
+		</ul>
+	</div>
 }
 
 templ website(website Website) {

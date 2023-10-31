@@ -9,6 +9,8 @@ import "context"
 import "io"
 import "bytes"
 
+import "strconv"
+
 func pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
@@ -216,8 +218,18 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var_19 := `View Content`
+			var_19 := `View Content (`
 			_, err = templBuffer.WriteString(var_19)
+			if err != nil {
+				return err
+			}
+			var var_20 string = strconv.Itoa(len(item.Content))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_20))
+			if err != nil {
+				return err
+			}
+			var_21 := `)`
+			_, err = templBuffer.WriteString(var_21)
 			if err != nil {
 				return err
 			}
@@ -225,17 +237,36 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_20 string = item.Content
-			_, err = templBuffer.WriteString(templ.EscapeString(var_20))
+			var var_22 string = item.Content
+			_, err = templBuffer.WriteString(templ.EscapeString(var_22))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</details></div><div class=\"flex-1 p-2\">")
+			_, err = templBuffer.WriteString("</details></div><div><ul>")
 			if err != nil {
 				return err
 			}
-			var var_21 string = item.DateCreated.Local().String()
-			_, err = templBuffer.WriteString(templ.EscapeString(var_21))
+			for _, link := range item.Links {
+				_, err = templBuffer.WriteString("<li>")
+				if err != nil {
+					return err
+				}
+				var var_23 string = link
+				_, err = templBuffer.WriteString(templ.EscapeString(var_23))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</li>")
+				if err != nil {
+					return err
+				}
+			}
+			_, err = templBuffer.WriteString("</ul></div><div class=\"flex-1 p-2\">")
+			if err != nil {
+				return err
+			}
+			var var_24 string = item.DateCreated.Local().String()
+			_, err = templBuffer.WriteString(templ.EscapeString(var_24))
 			if err != nil {
 				return err
 			}
@@ -243,8 +274,8 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			var var_22 string = item.DateUpdated.Local().String()
-			_, err = templBuffer.WriteString(templ.EscapeString(var_22))
+			var var_25 string = item.DateUpdated.Local().String()
+			_, err = templBuffer.WriteString(templ.EscapeString(var_25))
 			if err != nil {
 				return err
 			}

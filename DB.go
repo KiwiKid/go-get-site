@@ -180,12 +180,11 @@ func (db *DB) GetWebsite(id uint) (*Website, error) {
 	result := db.conn.First(&website, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil // return nil when not found
+			return nil, result.Error
 		}
-		log.Print(result.Error)
 		return nil, result.Error
 	}
-	return &website, nil
+	return &website, result.Error
 }
 
 func (db *DB) InsertPage(page Page) error {

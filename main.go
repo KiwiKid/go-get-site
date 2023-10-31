@@ -534,6 +534,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			WebsiteId: website.ID,
 		}
 		log.Printf("new page \n%v", newPage)
+		log.Printf("\ngot Links: \n%v", links)
 		// ADD the Page object to the "pages" list
 		newPages = append(newPages, newPage)
 	}
