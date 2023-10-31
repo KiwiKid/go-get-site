@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -166,7 +168,6 @@ func presentChat() http.HandlerFunc {
 
 func presentWebsite() http.HandlerFunc {
 	log.Print("PresentHome")
-	var newSiteId uint
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Print("PresentHome - NewDB")
@@ -198,8 +199,6 @@ func presentWebsite() http.HandlerFunc {
 					http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
 					return
 				}
-
-				newSiteId = site.ID
 
 				insertPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID})
 				if insertPageErr != nil {
@@ -241,7 +240,7 @@ func presentWebsite() http.HandlerFunc {
 		if err != nil {
 			panic(pageErr)
 		}
-		homeComp := home(websites, newSiteId)
+		homeComp := home(websites)
 
 		templ.Handler(homeComp).ServeHTTP(w, r)
 	}
@@ -420,7 +419,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 	}
 
 	pagesToProcess, err := db.GetPages(website.ID, 1, 5, processAll, pageUpdatedAfter)
-	log.Printf("linksToProcess: %d", len(pagesToProcess))
+	log.Printf("GetPages got %d links to process [processAll:%v] [pageUpdatedAfter:%v]", len(pagesToProcess), processAll, pageUpdatedAfter)
 	if err != nil {
 		log.Printf("Error GetLink from %v", err)
 		return err
@@ -428,7 +427,10 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 
 	if len(pagesToProcess) > 0 {
 		pagesToSave, err := fetchContentFromPages(ctx, website, pagesToProcess, 5)
-		log.Printf("Got %d pagesToSave from fetchContentFromPages %v", len(pagesToSave), err)
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("Got %d pagesToSave from fetchContentFromPages", len(pagesToSave))
 
 		for _, page := range pagesToSave {
 			insertErr := db.InsertPage(page)
@@ -447,7 +449,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 
 func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
-		/*expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+		expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
 		success := network.SetCookie(name, value).
 			WithExpires(&expr).
 			WithDomain(domain).
@@ -460,12 +462,13 @@ func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp
 			return fmt.Errorf("could not set cookie %s", name)
 		} else {
 			log.Print("Set cookie")
-		}*/
+		}
 		return nil
 	})
 }
 
 func fetchContentFromPages(ctx context.Context, website Website, pages []Page, remainingToProcess int) ([]Page, error) {
+	log.Print("fetchContentFromPages:start")
 	var content string
 	var title string
 	var links []string
@@ -479,13 +482,18 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 	}*/
 
 	urlWithParams := fmt.Sprintf("%s?%s", website.StartUrl, website.CustomQueryParam)
-	log.Printf("url to go: %s", urlWithParams)
 
-	tasks := []chromedp.Action{
-		chromedp.Navigate(urlWithParams),
+	tasks := []chromedp.Action{}
+
+	if website.StartUrl != "" {
+		log.Printf("fetchContentFromPages chromedp.Navigate(%s)", urlWithParams)
+
+		tasks = append(tasks, chromedp.Navigate(urlWithParams))
 	}
 
 	if website.LoginName != "" {
+		log.Printf("fetchContentFromPages Logging-in as '%s'", website.LoginName)
+
 		tasks = append(tasks,
 			chromedp.WaitVisible(`#txtUserName`, chromedp.ByID),
 			chromedp.SendKeys(`#txtUserName`, website.LoginName),
@@ -495,7 +503,15 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 		)
 	}
 
+	if website.RequestCookieName != "" && website.RequestCookieValue != "" {
+		log.Printf("fetchContentFromPages Setting Cookies")
+
+		tasks = append(tasks, SetCookie(website.RequestCookieName, website.RequestCookieValue, website.BaseUrl, "/", false, false))
+	}
+
 	for _, page := range pages {
+		log.Printf("fetchContentFromPages Starting Page %s", page.URL)
+
 		// Add the rest of the tasks
 		tasks = append(tasks,
 			chromedp.Navigate(page.URL),
@@ -504,21 +520,30 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			chromedp.Evaluate(js, &links),
 		)
 
+		err := chromedp.Run(ctx, tasks...)
+		if err != nil {
+			panic(err)
+			// return newPages, err
+		}
 		// BUILD A "Page" object
 		newPage := Page{
-			URL:     page.URL,
-			Title:   title,
-			Content: content,
-			Links:   links,
+			URL:       page.URL,
+			Title:     title,
+			Content:   content,
+			Links:     links,
+			WebsiteId: website.ID,
 		}
+		log.Printf("new page \n%v", newPage)
 		// ADD the Page object to the "pages" list
 		newPages = append(newPages, newPage)
 	}
 
 	log.Print("Starting tasks")
-	err := chromedp.Run(ctx, tasks...)
+
+	log.Printf("fetchContentFromPages Finished page eval %s %s", title, content)
+
 	log.Print("Finished tasks")
-	return newPages, err
+	return newPages, nil
 }
 
 func presentLinkCount() http.HandlerFunc {

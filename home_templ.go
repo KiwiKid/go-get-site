@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func home(websiteUrls []Website, createdSite uint) templ.Component {
+func home(websites []Website) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -38,107 +38,23 @@ func home(websiteUrls []Website, createdSite uint) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<main class=\"flex justify-center mt-6\"><div class=\"w-full max-w-2xl bg-white shadow rounded-lg p-6\"><ul>")
+		_, err = templBuffer.WriteString("<main class=\"flex justify-center mt-6\"><div class=\"w-full max-w-2xl bg-white shadow rounded-lg p-6\">")
 		if err != nil {
 			return err
 		}
-		for _, webUrl := range websiteUrls {
-			_, err = templBuffer.WriteString("<li class=\"mb-2\"><div>")
-			if err != nil {
-				return err
-			}
-			if webUrl.ID == createdSite {
-				_, err = templBuffer.WriteString("<div>")
-				if err != nil {
-					return err
-				}
-				var_2 := `(created)`
-				_, err = templBuffer.WriteString(var_2)
-				if err != nil {
-					return err
-				}
-				_, err = templBuffer.WriteString("</div>")
-				if err != nil {
-					return err
-				}
-			}
-			_, err = templBuffer.WriteString("<a class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\" href=\"")
-			if err != nil {
-				return err
-			}
-			var var_3 templ.SafeURL = templ.URL(webUrl.websitePagesURL())
-			_, err = templBuffer.WriteString(templ.EscapeString(string(var_3)))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("\">")
-			if err != nil {
-				return err
-			}
-			var var_4 string = webUrl.BaseUrl
-			_, err = templBuffer.WriteString(templ.EscapeString(var_4))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</a><form hx-delete=\"")
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString(templ.EscapeString(webUrl.websiteURL()))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\"><input type=\"text\" id=\"websiteId\"><button type=\"submit\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
-			if err != nil {
-				return err
-			}
-			var_5 := `delete`
-			_, err = templBuffer.WriteString(var_5)
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</button></form></div></li>")
-			if err != nil {
-				return err
-			}
-		}
-		_, err = templBuffer.WriteString("</ul><div class=\"mt-8\"><div class=\"text-gray-700 font-bold mb-4\">")
+		err = websiteList(websites).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
-		var_6 := `A new site url:`
-		_, err = templBuffer.WriteString(var_6)
+		_, err = templBuffer.WriteString("</div></main></body>")
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</div><form hx-post=\"/\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4\"><label for=\"websiteUrl\" class=\"block text-sm font-medium text-gray-600\">")
+		err = newWebsite().Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
-		var_7 := `Website Url:`
-		_, err = templBuffer.WriteString(var_7)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"websiteUrl\" name=\"websiteUrl\" pattern=\"^https?://.*\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><details><summary>")
-		if err != nil {
-			return err
-		}
-		var_8 := `Extended Options`
-		_, err = templBuffer.WriteString(var_8)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</summary><label for=\"customQueryParams\" class=\"block text-sm font-medium text-gray-600\">")
-		if err != nil {
-			return err
-		}
-		var_9 := `Custom Query Params:`
-		_, err = templBuffer.WriteString(var_9)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"customQueryParams\" name=\"customQueryParams\" class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></details><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div></main></body></html>")
+		_, err = templBuffer.WriteString("</html>")
 		if err != nil {
 			return err
 		}

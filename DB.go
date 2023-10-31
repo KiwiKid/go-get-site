@@ -19,7 +19,7 @@ type Page struct {
 	Keywords    string    `gorm:"size:255"`
 	Content     string    `gorm:"type:text"`
 	Embedding   []byte    `gorm:"-"`
-	URL         string    `gorm:"size:255;unique"`
+	URL         string    `gorm:"size:255"`
 	Links       []string  `gorm:"type:text[]"`
 	IsSeedUrl   bool      `gorm:"type:boolean;default:false;not null"`
 	DateCreated time.Time `gorm:"type:timestamp"`
@@ -32,13 +32,15 @@ func (Page) TableName() string {
 }
 
 type Website struct {
-	ID               uint      `gorm:"primary_key"`
-	CustomQueryParam string    `gorm:"size:1024"`
-	BaseUrl          string    `gorm:"size:1024"`
-	StartUrl         string    `gorm:"size:1024"`
-	DateCreated      time.Time `gorm:"type:timestamp"`
-	LoginName        string    `gorm:"size:255"`
-	LoginPass        string    `gorm:"size:255"`
+	ID                 uint      `gorm:"primary_key"`
+	CustomQueryParam   string    `gorm:"size:1024"`
+	BaseUrl            string    `gorm:"size:1024"`
+	StartUrl           string    `gorm:"size:1024"`
+	DateCreated        time.Time `gorm:"type:timestamp"`
+	LoginName          string    `gorm:"size:255"`
+	LoginPass          string    `gorm:"size:255"`
+	RequestCookieName  string    `gorm:"size:255"`
+	RequestCookieValue string    `gorm:"size:255"`
 }
 
 func (Website) TableName() string {

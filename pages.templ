@@ -9,9 +9,9 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 				<h1 class="text-4xl font-bold mb-6">PAGES</h1>
 				<h1 class="text-xl mb-4">{ website.BaseUrl }</h1>
 				<a href={ templ.URL(website.websiteURL()) } class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Referesh</a>
-				<form hx-post={ website.websiteURL() } hx-target="#container">
-					<button type="submit"  class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Re-fresh content</button>
-                     <label for="processAll">[ALL]</label>
+				<form hx-post={ website.websitePagesURL() } hx-target="#container">
+					<button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Re-fresh content</button>
+					<label for="processAll">[ALL]</label>
 					<input type="checkbox" name="processAll" id="processAll"/>
 				</form>
 				@process(count, string(website.ID))

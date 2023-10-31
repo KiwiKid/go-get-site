@@ -78,7 +78,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(templ.EscapeString(website.websiteURL()))
+		_, err = templBuffer.WriteString(templ.EscapeString(website.websitePagesURL()))
 		if err != nil {
 			return err
 		}
