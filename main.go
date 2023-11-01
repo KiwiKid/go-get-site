@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -199,9 +200,10 @@ func presentWebsite() http.HandlerFunc {
 					http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
 					return
 				}
-
-				insertPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID})
+				emptyLink := []string{}
+				insertPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID, Links: emptyLink})
 				if insertPageErr != nil {
+					log.Fatalf("insertPageErr %v", insertPageErr)
 					http.Error(w, "InsertPage is failed", http.StatusBadRequest)
 					return
 				}
@@ -474,7 +476,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 	var links []string
 	var newPages []Page
 
-	js := fmt.Sprintf(`Array.from(document.querySelectorAll("a[href^='%s']")).map(a => a.href)`, website.BaseUrl)
+	allLinksJS := `Array.from(document.querySelectorAll("*[href]")).map((i) => i.href)`
 
 	/*autoUrl, addQueryErr := addQueryParam(urlStr, "1c8ca3a202b84c47961b79700b40f01a")
 	if addQueryErr != nil {
@@ -517,7 +519,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			chromedp.Navigate(page.URL),
 			chromedp.Evaluate(`document.title`, &title),
 			chromedp.Evaluate(`document.body.innerText`, &content),
-			chromedp.Evaluate(js, &links),
+			chromedp.Evaluate(allLinksJS, &links),
 		)
 
 		err := chromedp.Run(ctx, tasks...)
@@ -525,6 +527,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			panic(err)
 			// return newPages, err
 		}
+
 		// BUILD A "Page" object
 		newPage := Page{
 			URL:       page.URL,
@@ -533,15 +536,31 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			Links:     links,
 			WebsiteId: website.ID,
 		}
-		log.Printf("new page \n%v", newPage)
-		log.Printf("\ngot Links: \n%v", links)
+		log.Printf("fetchContentFromPages - got %d Links: (%d)", len(links), website.BaseUrl)
+		log.Printf("fetchContentFromPages - new page \n%v", newPage)
 		// ADD the Page object to the "pages" list
 		newPages = append(newPages, newPage)
+		emptyLink := []string{}
+
+		for _, link := range links {
+			for _, baseUrl := range strings.Split(website.BaseUrl, ",") {
+				if strings.HasPrefix(link, baseUrl) {
+					log.Printf("fetchContentFromPages new empty page %d", link)
+
+					newEmptyPage := Page{
+						URL:       link,
+						WebsiteId: website.ID,
+						Links:     emptyLink,
+					}
+					newPages = append(newPages, newEmptyPage)
+					// You might want to add this newPage to some slice or process it further
+					break
+				}
+			}
+		}
 	}
 
-	log.Print("Starting tasks")
-
-	log.Printf("fetchContentFromPages Finished page eval %s %s", title, content)
+	log.Printf("fetchContentFromPages Finished page eval %s \n%s \n%s", title, content, links)
 
 	log.Print("Finished tasks")
 	return newPages, nil

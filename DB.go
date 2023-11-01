@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -13,18 +15,20 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type StrArray []string
+
 type Page struct {
-	ID          uint      `gorm:"primary_key"`
-	Title       string    `gorm:"size:255"`
-	Keywords    string    `gorm:"size:255"`
-	Content     string    `gorm:"type:text"`
-	Embedding   []byte    `gorm:"-"`
-	URL         string    `gorm:"size:255"`
-	Links       []string  `gorm:"type:text[]"`
-	IsSeedUrl   bool      `gorm:"type:boolean;default:false;not null"`
-	DateCreated time.Time `gorm:"type:timestamp"`
-	DateUpdated time.Time `gorm:"type:timestamp"`
-	WebsiteId   uint      `gorm:"index;not null"`
+	ID          uint            `gorm:"primary_key"`
+	Title       string          `gorm:"size:255"`
+	Keywords    string          `gorm:"size:255"`
+	Content     string          `gorm:"type:text"`
+	Embedding   []byte          `gorm:"-"`
+	URL         string          `gorm:"size:255"`
+	Links       JSONStringArray `gorm:"type:jsonb"`
+	IsSeedUrl   bool            `gorm:"type:boolean;default:false;not null"`
+	DateCreated time.Time       `gorm:"type:timestamp"`
+	DateUpdated time.Time       `gorm:"type:timestamp"`
+	WebsiteId   uint            `gorm:"index;not null"`
 }
 
 func (Page) TableName() string {
@@ -82,6 +86,18 @@ func (w *ChatThread) ChatThreadURL() string {
 
 func (w *Chat) ChatURL() string {
 	return fmt.Sprintf("/search/%d", w.ThreadId)
+}
+
+type JSONStringArray []string
+
+// Implement the sql.Scanner interface
+func (a *JSONStringArray) Scan(src interface{}) error {
+	return json.Unmarshal(src.([]byte), a)
+}
+
+// Implement the driver.Valuer interface
+func (a JSONStringArray) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }
 
 type DB struct {
@@ -188,6 +204,7 @@ func (db *DB) GetWebsite(id uint) (*Website, error) {
 }
 
 func (db *DB) InsertPage(page Page) error {
+	log.Printf("Updating page: %+v\n", page)
 	page.DateCreated = time.Now()
 	result := db.conn.Create(&page).Clauses(clause.OnConflict{UpdateAll: true})
 	if result.Error != nil {
@@ -198,6 +215,7 @@ func (db *DB) InsertPage(page Page) error {
 }
 
 func (db *DB) UpdatePage(page Page) error {
+	log.Printf("Updating page: %+v\n", page)
 	page.DateUpdated = time.Now()
 	result := db.conn.Model(&page).Where("pgml.page.id = ? ", page.ID).Updates(page)
 	return result.Error
@@ -324,7 +342,7 @@ func (qr PageQueryResult) String() string {
 func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, error) {
 	var queryResults []PageQueryResult
 
-	rawSQL := fmt.Sprintf(`
+	rawSQL := `
     WITH request AS (
 		SELECT pgml.embed(
 			transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
@@ -342,7 +360,7 @@ func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, 
 	  FROM pgml.page
 	  WHERE website_id = $2
 	  ORDER BY cosine_similarity ASC
-	  LIMIT 3`)
+	  LIMIT 3`
 
 	rows, err := db.conn.Raw(rawSQL, question, websiteId).Rows() // Here we get the raw rows
 	if err != nil {

@@ -8,11 +8,12 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 		<body class="bg-gray-100" id="container">
 			@nav()
 			<div class="container mx-auto mt-12 p-4">
+			<a href={ templ.URL(website.websiteURL()) } class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Refresh</a>
 				<h1 class="text-4xl font-bold mb-6">PAGES</h1>
+				
 				<h1 class="text-xl mb-4">{ website.BaseUrl }</h1>
-				<a href={ templ.URL(website.websiteURL()) } class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Referesh</a>
 				<form hx-post={ website.websitePagesURL() } hx-target="#container">
-					<button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Re-fresh content</button>
+					<button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">🕸️ Re-read website 🕸️</button>
 					<label for="processAll">[ALL]</label>
 					<input type="checkbox" name="processAll" id="processAll"/>
 				</form>
@@ -22,7 +23,7 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div class="flex-1 p-2">URL</div>
 					<div class="flex-1 p-2">Keywords</div>
 					<div class="flex-1 p-2">Title</div>
-					<div class="flex-2 p-2">Content</div>
+					<div class="flex-2 p-2">Content + Links</div>
 					<div class="flex-1 p-2">Date Created</div>
 					<div class="flex-1 p-2">Date Updated</div>
 				</div>
@@ -33,18 +34,20 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 						<div class="flex-1 p-2">{ item.Title }</div>
 						<div class="flex-2 p-2">
 							<details>
-								<summary class="cursor-pointer">View Content ({ strconv.Itoa(len(item.Content)) })</summary>
+								<summary class="cursor-pointer">Content: ({ strconv.Itoa(len(item.Content)) }) Links: ({ strconv.Itoa(len(item.Links)) })</summary>
+								<h2>Content</h2>
 								{ item.Content }
+								<br/>
+								<h2>Links</h2>
+								<div>
+									<ul>
+										for _, link := range item.Links {
+											<li>{ link }</li>
+										}
+									</ul>
+								</div>
 							</details>
 						</div>
-						<div>
-						<ul>
-						for _, link := range item.Links {
-							<li>{link}</li>
-						}
-						</ul>
-						</div>
-
 						<div class="flex-1 p-2">{ item.DateCreated.Local().String() }</div>
 						<div class="flex-1 p-2">{ item.DateUpdated.Local().String() }</div>
 					</div>
