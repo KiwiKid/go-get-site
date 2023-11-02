@@ -18,17 +18,18 @@ import (
 type StrArray []string
 
 type Page struct {
-	ID          uint            `gorm:"primary_key"`
-	Title       string          `gorm:"size:255"`
-	Keywords    string          `gorm:"size:255"`
-	Content     string          `gorm:"type:text"`
-	Embedding   []byte          `gorm:"-"`
-	URL         string          `gorm:"size:255"`
-	Links       JSONStringArray `gorm:"type:jsonb"`
-	IsSeedUrl   bool            `gorm:"type:boolean;default:false;not null"`
-	DateCreated time.Time       `gorm:"type:timestamp"`
-	DateUpdated time.Time       `gorm:"type:timestamp"`
-	WebsiteId   uint            `gorm:"index;not null"`
+	ID            uint            `gorm:"primary_key"`
+	Title         string          `gorm:"size:255"`
+	Keywords      string          `gorm:"size:255"`
+	Content       string          `gorm:"type:text"`
+	Embedding     []byte          `gorm:"-"`
+	URL           string          `gorm:"size:255"`
+	Links         JSONStringArray `gorm:"type:jsonb"`
+	IsSeedUrl     bool            `gorm:"type:boolean;default:false;not null"`
+	DateCreated   time.Time       `gorm:"type:timestamp"`
+	DateUpdated   time.Time       `gorm:"type:timestamp"`
+	DateProcessed time.Time       `gorm:"type:timestamp"`
+	WebsiteId     uint            `gorm:"index;not null"`
 
 	_ struct{} `gorm:"unique_index:idx_website_url;column:website_id;column:url"`
 }
@@ -233,6 +234,9 @@ func (db *DB) InsertPage(page Page) error {
 func (db *DB) UpsertPage(page Page) error {
 	page.DateUpdated = time.Now()
 	page.DateCreated = time.Now()
+	if len(page.Content) > 0 {
+		page.DateProcessed = time.Now()
+	}
 	hasUpdatedRow, updateErr := db.UpdatePage(page)
 	if !hasUpdatedRow {
 		log.Printf("No page to update - inserting page %v: %v", page.ID, updateErr)
@@ -279,7 +283,7 @@ func (db *DB) ListWebsites() ([]Website, error) {
 	return websites, nil
 }
 
-func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterDate time.Time) ([]Page, error) {
+func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterProcessDate time.Time) ([]Page, error) {
 	if limit <= 0 {
 		return nil, errors.New("invalid limit value")
 	}
@@ -293,7 +297,7 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 
 	if !processAll {
 		query = query.Where("LENGTH(content) = 0")
-		query = query.Where("date_updated < ?", afterDate)
+		query = query.Where("date_processed < ?", afterProcessDate)
 	}
 
 	var pages []Page

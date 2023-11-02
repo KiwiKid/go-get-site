@@ -15,11 +15,13 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div id="loadingText" style="display:none">Loading...</div>
 				</form>
 				<h1 class="text-xl mb-4">{ website.BaseUrl }</h1>
+				<details><summary>{ strconv.Itoa(len(addedPagesSet)) }</summary>
 				<ul>
 					for link := range addedPagesSet {
 						<li class="bg-green-400">{ link }</li>
 					}
 				</ul>
+				</details>
 				<form hx-post={ website.websitePagesURL() } hx-target="#container" class="space-y-4">
 					<button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Load more website content</button>
 					

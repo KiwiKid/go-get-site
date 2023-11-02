@@ -25,12 +25,11 @@ func main() {
 	}
 
 	// Uncomment to deploy DB changes (commentted out as it improves rebuild time)
-	/*db, err := NewDB()
+	db, err := NewDB()
 	if err != nil {
 		panic(err)
 	}
 	db.Migrate()
-	*/
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -336,19 +335,19 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 
 func processWebsite(ctx context.Context, db DB, website Website, processAll bool, page int, pageSize int, addedPagesSet map[string]struct{}) error {
 	log.Print("StartProcessingSite ", website.BaseUrl)
-	var pageUpdatedAfter time.Time
+	var pageProcessedAfter time.Time
 	if processAll {
-		pageUpdatedAfter = time.Now().Add(-365 * 24 * time.Hour)
+		pageProcessedAfter = time.Now().Add(-365 * 24 * time.Hour)
 	} else {
-		pageUpdatedAfter = time.Now().Add(-7 * 24 * time.Hour)
+		pageProcessedAfter = time.Now().Add(-7 * 24 * time.Hour)
 	}
 
-	pagesToProcess, err := db.GetPages(website.ID, page, pageSize, processAll, pageUpdatedAfter)
+	pagesToProcess, err := db.GetPages(website.ID, page, pageSize, processAll, pageProcessedAfter)
 	linksAlreadyProcessed, apErr := db.GetCompletedPageUrls(website.ID)
 	for _, url := range linksAlreadyProcessed {
 		addedPagesSet[GetPageDoneCacheKey(website.ID, url)] = struct{}{}
 	}
-	log.Printf("GetPages got %d links to process [processAll:%v] [pageUpdatedAfter:%v]", len(pagesToProcess), processAll, pageUpdatedAfter)
+	log.Printf("GetPages got %d links to process [processAll:%v] [pageProcessedAfter:%v]", len(pagesToProcess), processAll, pageProcessedAfter)
 	if err != nil || apErr != nil {
 		log.Printf("Error GetLink from %v", err)
 		return err
