@@ -67,16 +67,7 @@ func process(count LinkCountResult, websiteId string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</span> ")
-		if err != nil {
-			return err
-		}
-		var_7 := `)`
-		_, err = templBuffer.WriteString(var_7)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div>")
+		_, err = templBuffer.WriteString("</span></div>")
 		if err != nil {
 			return err
 		}
