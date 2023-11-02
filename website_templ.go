@@ -53,7 +53,7 @@ func websiteList(websites []Website) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" hx-indicator=\"#loadingText\"><input type=\"text\" id=\"websiteId\"><button type=\"submit\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
+			_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" hx-indicator=\"#loadingText\"><button type=\"submit\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
 			if err != nil {
 				return err
 			}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/a-h/templ"
 )
@@ -85,4 +86,60 @@ func stringToUint(s string) (uint, error) {
 		return 0, fmt.Errorf("negative value not allowed: %d", i)
 	}
 	return uint(i), nil
+}
+
+func linkCouldBePage(s string) bool {
+	nonPageExtensions := map[string]bool{
+		".css":   true,
+		".js":    true,
+		".ico":   true,
+		".png":   true,
+		".jpg":   true,
+		".jpeg":  true,
+		".gif":   true,
+		".bmp":   true,
+		".tif":   true,
+		".tiff":  true,
+		".svg":   true,
+		".webp":  true,
+		".mp3":   true,
+		".wav":   true,
+		".mp4":   true,
+		".mov":   true,
+		".avi":   true,
+		".mkv":   true,
+		".pdf":   true,
+		".xml":   true,
+		".txt":   true,
+		".zip":   true,
+		".rar":   true,
+		".tar":   true,
+		".gz":    true,
+		".json":  true,
+		".woff":  true,
+		".woff2": true,
+		".ttf":   true,
+		".eot":   true,
+		".otf":   true,
+		".flv":   true,
+		".swf":   true,
+		".iso":   true,
+	}
+
+	// Parse the href to a URL structure
+	u, err := url.Parse(s)
+	if err != nil {
+		return false
+	}
+
+	// Extract only the path, ignoring query and fragment
+	path := u.EscapedPath()
+
+	// Check the extension
+	for ext := range nonPageExtensions {
+		if strings.HasSuffix(strings.ToLower(path), ext) {
+			return false
+		}
+	}
+	return true
 }

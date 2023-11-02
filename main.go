@@ -201,22 +201,13 @@ func presentWebsite() http.HandlerFunc {
 					return
 				}
 				emptyLink := []string{}
-				insertPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID, Links: emptyLink})
-				if insertPageErr != nil {
-					log.Fatalf("insertPageErr %v", insertPageErr)
-					http.Error(w, "InsertPage is failed", http.StatusBadRequest)
-					return
+				inserPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID, Links: emptyLink})
+				if inserPageErr != nil {
+					log.Fatalf("inserPageErr  %v", inserPageErr)
+					http.Error(w, "UpsertPage is failed", http.StatusBadRequest)
+					panic(inserPageErr)
 				}
 
-				/*insertErr := db.InsertLink(Link{URL: websiteUrl, SourceURL: websiteUrl})
-				if insertErr != nil {
-					log.Printf("Error InsertLink 1 %s: %v", websiteUrl, insertErr)
-					//http.Error(w, "Error saving page", http.StatusMethodNotAllowed)
-					//		return
-				}*/
-
-				/*insertErr := db.InsertPage(Page{Title: "", Content: "", URL: websiteUrl, IsSeedUrl: true, WebsiteId: site.ID})
-				 */
 				log.Printf("INSERT DATES MethodPost %v", site)
 
 			}
@@ -235,6 +226,8 @@ func presentWebsite() http.HandlerFunc {
 					http.Error(w, "InsertPage is failed", http.StatusBadRequest)
 					return
 				}
+
+				r.Header.Add("HX-Redirect", "/")
 			}
 		}
 
@@ -247,75 +240,6 @@ func presentWebsite() http.HandlerFunc {
 		templ.Handler(homeComp).ServeHTTP(w, r)
 	}
 }
-
-/*
-func handleProcessing(ctx context.Context) http.HandlerFunc {
-	db, err := NewDB()
-	if err != nil {
-		panic(err)
-	}
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		websiteIdStr := vars["websiteId"]
-
-		websiteId, err := stringToUint(websiteIdStr)
-		if err != nil {
-			http.Error(w, "Failed to stringToUint", http.StatusInternalServerError)
-			return
-		}
-		website, err := db.GetWebsite(websiteId)
-		if err != nil {
-			http.Error(w, "Failed to GetWebsite", http.StatusInternalServerError)
-			return
-		}
-
-		if r.Method == http.MethodPost {
-
-			processErr := processWebsite(ctx, *db, *website)
-			if processErr != nil {
-				http.Error(w, "Failed to processWebsite", http.StatusInternalServerError)
-				return
-			}
-
-		}
-
-		pageStr := r.URL.Query().Get("page")
-		page, err := strconv.Atoi(pageStr)
-		if err != nil || page <= 0 {
-			page = 1
-		}
-
-		pageSizeStr := r.URL.Query().Get("pageSize")
-		pageSize, err := strconv.Atoi(pageSizeStr)
-		if err != nil || pageSize <= 0 {
-			pageSize = 100
-		}
-
-			db, err := NewDB()
-			if err != nil {
-				panic(err)
-			}
-
-		//log.Printf("ListPages %s %d %d", websiteURL, page, pageSize)
-
-		pagesList, pageErr := db.ListPages(website.ID, page, pageSize)
-		if pageErr != nil {
-			panic(pageErr)
-		}
-
-		count, countErr := db.CountLinksAndPages(website.ID)
-		if countErr != nil {
-			log.Printf("Error CountLinksAndPages link %s: %v", websiteId, err)
-			return
-		}
-
-		pagesComp := pages(pagesList, *website, *count)
-
-		templ.Handler(pagesComp).ServeHTTP(w, r)
-
-	}
-}*/
 
 func handlePages(ctx context.Context) http.HandlerFunc {
 	log.Print("handlePages")
@@ -435,13 +359,9 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 		log.Printf("Got %d pagesToSave from fetchContentFromPages", len(pagesToSave))
 
 		for _, page := range pagesToSave {
-			insertErr := db.InsertPage(page)
+			insertErr := db.UpsertPage(page)
 			if insertErr != nil {
-				updateErr := db.UpdatePage(page)
-				if updateErr != nil {
-					log.Printf("Error saving page 2 %v: %v", page.ID, updateErr)
-					return updateErr
-				}
+				return insertErr
 			}
 		}
 	}
@@ -544,17 +464,24 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 
 		for _, link := range links {
 			for _, baseUrl := range strings.Split(website.BaseUrl, ",") {
-				if strings.HasPrefix(link, baseUrl) {
-					log.Printf("fetchContentFromPages new empty page %d", link)
+				if strings.HasPrefix(link, baseUrl) || strings.HasPrefix(link, "/") {
 
-					newEmptyPage := Page{
-						URL:       link,
-						WebsiteId: website.ID,
-						Links:     emptyLink,
+					if linkCouldBePage(link) {
+
+						log.Printf("fetchContentFromPages page link %d", link)
+
+						newEmptyPage := Page{
+							URL:       link,
+							WebsiteId: website.ID,
+							Links:     emptyLink,
+						}
+						newPages = append(newPages, newEmptyPage)
+						// You might want to add this newPage to some slice or process it further
+						break
+					} else {
+						log.Printf("fetchContentFromPages non-page link %d", link)
+
 					}
-					newPages = append(newPages, newEmptyPage)
-					// You might want to add this newPage to some slice or process it further
-					break
 				}
 			}
 		}

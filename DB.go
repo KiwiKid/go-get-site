@@ -29,10 +29,16 @@ type Page struct {
 	DateCreated time.Time       `gorm:"type:timestamp"`
 	DateUpdated time.Time       `gorm:"type:timestamp"`
 	WebsiteId   uint            `gorm:"index;not null"`
+
+	_ struct{} `gorm:"unique_index:idx_website_url;column:website_id;column:url"`
 }
 
 func (Page) TableName() string {
 	return "pgml.page"
+}
+
+func (p Page) ToProcess() bool {
+	return len(p.Content) == 0 || p.DateUpdated.Before(time.Now().Add(-7*24*time.Hour))
 }
 
 type Website struct {
@@ -204,7 +210,8 @@ func (db *DB) GetWebsite(id uint) (*Website, error) {
 }
 
 func (db *DB) InsertPage(page Page) error {
-	log.Printf("Updating page: %+v\n", page)
+	//log.Printf("Updating page: %+v\n", page)
+	page.DateUpdated = time.Now()
 	page.DateCreated = time.Now()
 	result := db.conn.Create(&page).Clauses(clause.OnConflict{UpdateAll: true})
 	if result.Error != nil {
@@ -214,11 +221,35 @@ func (db *DB) InsertPage(page Page) error {
 	return nil
 }
 
-func (db *DB) UpdatePage(page Page) error {
-	log.Printf("Updating page: %+v\n", page)
+func (db *DB) UpsertPage(page Page) error {
+	hasUpdatedRow, updateErr := db.UpdatePage(page)
+	if !hasUpdatedRow {
+		insertErr := db.InsertPage(page)
+		if insertErr != nil {
+			log.Printf("Error saving page 2 %v: %v", page.ID, updateErr)
+			return updateErr
+		}
+	} else if updateErr != nil {
+		panic(updateErr)
+	}
+	return nil
+}
+
+func (db *DB) UpdatePage(page Page) (bool, error) {
+	log.Printf("Updating page: %s\n content len: %+v", page.URL, page)
 	page.DateUpdated = time.Now()
-	result := db.conn.Model(&page).Where("pgml.page.id = ? ", page.ID).Updates(page)
-	return result.Error
+	page.DateCreated = time.Now()
+	result := db.conn.Model(&page).Where("pgml.page.url = ?", page.URL).Where("pgml.page.website_id= ?", page.WebsiteId).Updates(page)
+
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	// Check if any rows were updated
+	if result.RowsAffected > 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (db *DB) ListWebsites() ([]Website, error) {
@@ -395,7 +426,7 @@ func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 	log.Print(websiteId)
 	// Count total links for the URL
 	var totalLinks int64
-	if err := db.conn.Table("pgml.link").Where("website_id = ?", websiteId).Count(&totalLinks).Error; err != nil {
+	if err := db.conn.Table("pgml.page").Where("pgml.page.website_id = ?", websiteId).Count(&totalLinks).Error; err != nil {
 		return nil, err
 	}
 
@@ -403,9 +434,8 @@ func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 
 	// Count links that have pages for the URL
 	var linksWithPages int64
-	if err := db.conn.Table("pgml.link").
-		Joins("INNER JOIN pgml.page ON pgml.page.website_id = pgml.link.website_id").
-		Where("pgml.link.website_id = ?", websiteId).Where("LENGTH(pgml.page.content) > 0").
+	if err := db.conn.Table("pgml.page").
+		Where("pgml.page.website_id = ?", websiteId).Where("LENGTH(pgml.page.content) > 0").
 		Count(&linksWithPages).Error; err != nil {
 		return nil, err
 	}
