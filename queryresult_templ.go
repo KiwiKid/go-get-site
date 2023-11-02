@@ -11,7 +11,7 @@ import "bytes"
 
 import "strconv"
 
-func queryResult(pageQueryResults []PageQueryResult, websiteIdStr string) templ.Component {
+func queryResult(pageQueryResults []PageQueryResult, websiteIdStr string, message string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -33,7 +33,16 @@ func queryResult(pageQueryResults []PageQueryResult, websiteIdStr string) templ.
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</div><div class=\"container mx-auto\">")
+		_, err = templBuffer.WriteString("</div><div class=\"container mx-auto\"><h3>")
+		if err != nil {
+			return err
+		}
+		var var_3 string = message
+		_, err = templBuffer.WriteString(templ.EscapeString(var_3))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</h3>")
 		if err != nil {
 			return err
 		}
@@ -42,17 +51,35 @@ func queryResult(pageQueryResults []PageQueryResult, websiteIdStr string) templ.
 			if err != nil {
 				return err
 			}
-			var var_3 string = strconv.Itoa(queryRes.ID) + strconv.FormatFloat(queryRes.Rank, 'f', -1, 64)
-			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</summary> ")
-			if err != nil {
-				return err
-			}
-			var var_4 string = queryRes.Keywords
+			var var_4 string = "[" + strconv.Itoa(queryRes.ID) + "] " + strconv.FormatFloat(queryRes.Rank, 'f', -1, 64)
 			_, err = templBuffer.WriteString(templ.EscapeString(var_4))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" <a href=\"")
+			if err != nil {
+				return err
+			}
+			var var_5 templ.SafeURL = templ.SafeURL(queryRes.URL)
+			_, err = templBuffer.WriteString(templ.EscapeString(string(var_5)))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-500 hover:text-blue-700 underline transition duration-300 ease-in-out\">")
+			if err != nil {
+				return err
+			}
+			var var_6 string = queryRes.Title
+			_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</a></summary> ")
+			if err != nil {
+				return err
+			}
+			var var_7 string = queryRes.Keywords
+			_, err = templBuffer.WriteString(templ.EscapeString(var_7))
 			if err != nil {
 				return err
 			}
@@ -60,8 +87,8 @@ func queryResult(pageQueryResults []PageQueryResult, websiteIdStr string) templ.
 			if err != nil {
 				return err
 			}
-			var var_5 string = queryRes.Content
-			_, err = templBuffer.WriteString(templ.EscapeString(var_5))
+			var var_8 string = queryRes.Content
+			_, err = templBuffer.WriteString(templ.EscapeString(var_8))
 			if err != nil {
 				return err
 			}

@@ -1,30 +1,17 @@
 package main
 
-templ home(websiteUrls []Website) {
+templ home(websites []Website) {
 	<html>
 		@header()
 		<body id="container">
 			@nav()
 			<main class="flex justify-center mt-6">
 				<div class="w-full max-w-2xl bg-white shadow rounded-lg p-6">
-					<ul>
-						for _, webUrl := range websiteUrls {
-							<li class="mb-2">
-								<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websiteURL()) }>{ webUrl.BaseUrl }</a>
-							</li>
-						}
-					</ul>
-					<div class="mt-8">
-						<div class="text-gray-700 font-bold mb-4">A new site url:</div>
-						<form hx-post="/" hx-swap="outerHTML" hx-target="#container" class="space-y-4">
-							<label for="websiteUrl" class="block text-sm font-medium text-gray-600">Website Url:</label>
-							<input type="url" id="websiteUrl" name="websiteUrl" pattern="^https?://.*" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
-							<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
-						</form>
-					</div>
+				@websiteList(websites)
 				</div>
 			</main>
 		</body>
+		@newWebsite()
 	</html>
 }
 

@@ -1,0 +1,56 @@
+package main
+
+templ websiteList(websites []Website) {
+	<div>
+		<ul>
+			for _, webUrl := range websites {
+				<li class="mb-2">
+					<div>
+						<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websitePagesURL()) }>{ webUrl.BaseUrl }</a>
+						<form hx-delete={ webUrl.websiteURL() } hx-swap="outerHTML" hx-target="#container" hx-indicator="#loadingText">
+							<button type="submit" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">delete</button>
+							<div id="loadingText" style="display:none">Loading...</div>
+						</form>
+					</div>
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+templ website(website Website) {
+	<div>
+		<div class="mt-8">
+			<div class="text-gray-700 font-bold mb-4">A new site url:</div>
+			<form hx-post="/" hx-swap="outerHTML" hx-target="#container" class="space-y-4">
+				<label for="websiteUrl" class="block text-sm font-medium text-gray-600">Website Url:</label>
+				<input type="url" id="websiteUrl" name="websiteUrl" pattern="^https?://.*" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				<details>
+					<summary>Extended Options</summary>
+					<label for="customQueryParams" class="block text-sm font-medium text-gray-600">Custom Query Params:</label>
+					<input type="text" id="customQueryParams" name="customQueryParams" class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				</details>
+				<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+			</form>
+		</div>
+	</div>
+}
+
+templ newWebsite() {
+	<div>
+		<div class="mt-8">
+			<div class="text-gray-700 font-bold mb-4">A new site url:</div>
+			<form hx-post="/" hx-swap="outerHTML" hx-target="#container" class="space-y-4">
+				<label for="websiteUrl" class="block text-sm font-medium text-gray-600">Website Url:</label>
+				<input type="url" id="websiteUrl" name="websiteUrl" pattern="^https?://.*" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				<details>
+					<summary>Extended Options</summary>
+					<label for="customQueryParams" class="block text-sm font-medium text-gray-600">Custom Query Params:</label>
+					<input type="text" id="customQueryParams" name="customQueryParams" class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				</details>
+				<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+			</form>
+		</div>
+	</div>
+}
+

@@ -3,9 +3,14 @@ package main
 import (
 	"strconv"
 )
-templ process(count LinkCountResult, websiteId string){
 
-     <div hx-get={`/process/{websiteId}`} hx-swap="outerHTML">
-        (<span>{strconv.Itoa(count.LinksHavePages)}</span> out of <span> {strconv.Itoa(count.TotalLinks)}</span>)
-    </div>
+templ process(count LinkCountResult, websiteId string) {
+	<div hx-get={ `/process/{websiteId}` } hx-trigger="onload" hx-swap="outerHTML">
+		
+		<span>processed { strconv.Itoa(count.LinksHavePages) }</span>
+		 
+		<span>(out of { strconv.Itoa(count.TotalLinks) })</span>
+		
+	</div>
 }
+

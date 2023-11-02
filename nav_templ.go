@@ -35,7 +35,7 @@ func nav() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_3 := `Go Get Site`
+		var_3 := `Asker`
 		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err
@@ -58,11 +58,11 @@ func nav() templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</a><a href=\"/chat\" class=\"text-white hover:text-blue-400\">")
+		_, err = templBuffer.WriteString("</a><a href=\"/search\" class=\"text-white hover:text-blue-400\">")
 		if err != nil {
 			return err
 		}
-		var_6 := `Chats`
+		var_6 := `Search`
 		_, err = templBuffer.WriteString(var_6)
 		if err != nil {
 			return err

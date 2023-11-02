@@ -26,7 +26,7 @@ func header() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_2 := `Your Website Title`
+		var_2 := `❓ Asker`
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err

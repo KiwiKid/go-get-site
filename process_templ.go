@@ -34,16 +34,12 @@ func process(count LinkCountResult, websiteId string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\">")
+		_, err = templBuffer.WriteString("\" hx-trigger=\"onload\" hx-swap=\"outerHTML\"><span>")
 		if err != nil {
 			return err
 		}
-		var_2 := `(`
+		var_2 := `processed `
 		_, err = templBuffer.WriteString(var_2)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("<span>")
 		if err != nil {
 			return err
 		}
@@ -52,16 +48,12 @@ func process(count LinkCountResult, websiteId string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</span> ")
+		_, err = templBuffer.WriteString("</span><span>")
 		if err != nil {
 			return err
 		}
-		var_4 := `out of `
+		var_4 := `(out of `
 		_, err = templBuffer.WriteString(var_4)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("<span>")
 		if err != nil {
 			return err
 		}
@@ -70,16 +62,12 @@ func process(count LinkCountResult, websiteId string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</span>")
-		if err != nil {
-			return err
-		}
 		var_6 := `)`
 		_, err = templBuffer.WriteString(var_6)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</div>")
+		_, err = templBuffer.WriteString("</span></div>")
 		if err != nil {
 			return err
 		}

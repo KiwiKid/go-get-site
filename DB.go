@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -13,42 +15,46 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type StrArray []string
+
 type Page struct {
-	ID          uint      `gorm:"primary_key"`
-	Title       string    `gorm:"size:255"`
-	Keywords    string    `gorm:"size:255"`
-	Content     string    `gorm:"type:text"`
-	Embedding   []byte    `gorm:"-"`
-	URL         string    `gorm:"size:255;unique"`
-	Links       []string  `gorm:"type:text[]"`
-	IsSeedUrl   bool      `gorm:"type:boolean;default:false;not null"`
-	DateCreated time.Time `gorm:"type:timestamp"`
-	DateUpdated time.Time `gorm:"type:timestamp"`
-	WebsiteId   uint      `gorm:"index;not null"`
+	ID          uint            `gorm:"primary_key"`
+	Title       string          `gorm:"size:255"`
+	Keywords    string          `gorm:"size:255"`
+	Content     string          `gorm:"type:text"`
+	Embedding   []byte          `gorm:"-"`
+	URL         string          `gorm:"size:255"`
+	Links       JSONStringArray `gorm:"type:jsonb"`
+	IsSeedUrl   bool            `gorm:"type:boolean;default:false;not null"`
+	DateCreated time.Time       `gorm:"type:timestamp"`
+	DateUpdated time.Time       `gorm:"type:timestamp"`
+	WebsiteId   uint            `gorm:"index;not null"`
+
+	_ struct{} `gorm:"unique_index:idx_website_url;column:website_id;column:url"`
 }
 
 func (Page) TableName() string {
 	return "pgml.page"
 }
 
-type Link struct {
-	ID            uint      `gorm:"primary_key"`
-	SourceURL     string    `gorm:"size:255"`
-	URL           string    `gorm:"size:255;unique"`
-	DateCreated   time.Time `gorm:"type:timestamp"`
-	LastProcessed time.Time `gorm:"type:timestamp"`
-	WebsiteId     uint      `gorm:"index;not null"`
+func (p Page) ToProcess() bool {
+	return len(p.Content) == 0 || p.DateUpdated.Before(time.Now().Add(-7*24*time.Hour))
 }
 
-func (Link) TableName() string {
-	return "pgml.link"
+func (p Page) PageStatus() string {
+	return fmt.Sprintf("[C:%d] [L:%d]", len(p.Content), len(p.Links))
 }
 
 type Website struct {
-	ID               uint      `gorm:"primary_key"`
-	CustomQueryParam string    `gorm:"size:255"`
-	BaseUrl          string    `gorm:"size:255"`
-	DateCreated      time.Time `gorm:"type:timestamp"`
+	ID                 uint      `gorm:"primary_key"`
+	CustomQueryParam   string    `gorm:"size:1024"`
+	BaseUrl            string    `gorm:"size:1024"`
+	StartUrl           string    `gorm:"size:1024"`
+	DateCreated        time.Time `gorm:"type:timestamp"`
+	LoginName          string    `gorm:"size:255"`
+	LoginPass          string    `gorm:"size:255"`
+	RequestCookieName  string    `gorm:"size:255"`
+	RequestCookieValue string    `gorm:"size:255"`
 }
 
 func (Website) TableName() string {
@@ -80,12 +86,28 @@ func (w *Website) websiteURL() string {
 	return fmt.Sprintf("/site/%d", w.ID)
 }
 
+func (w *Website) websitePagesURL() string {
+	return fmt.Sprintf("/site/%d/pages", w.ID)
+}
+
 func (w *ChatThread) ChatThreadURL() string {
-	return fmt.Sprintf("/chat/%d", w.ThreadId)
+	return fmt.Sprintf("/search/%d", w.ThreadId)
 }
 
 func (w *Chat) ChatURL() string {
-	return fmt.Sprintf("/chat/%d", w.ThreadId)
+	return fmt.Sprintf("/search/%d", w.ThreadId)
+}
+
+type JSONStringArray []string
+
+// Implement the sql.Scanner interface
+func (a *JSONStringArray) Scan(src interface{}) error {
+	return json.Unmarshal(src.([]byte), a)
+}
+
+// Implement the driver.Valuer interface
+func (a JSONStringArray) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }
 
 type DB struct {
@@ -106,10 +128,8 @@ func NewDB() (*DB, error) {
 func (db *DB) Migrate() {
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
 	db.conn.AutoMigrate(&Page{})
-	db.conn.AutoMigrate(&Link{})
 	db.conn.AutoMigrate(&Website{})
 	db.conn.AutoMigrate(&Chat{})
-	//db.conn.AutoMigrate(&Embedding{})
 
 	// Check if the index exists
 	var count int64
@@ -120,7 +140,7 @@ func (db *DB) Migrate() {
 	`, "pgml.page", "idx_website_url").Scan(&count)
 
 	if count == 0 {
-		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url)")
+		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url) IF EXISTS")
 	}
 
 	err := db.conn.Exec(`
@@ -138,9 +158,16 @@ func (db *DB) Migrate() {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
 				ALTER TABLE pgml.page 
 				ADD COLUMN embedding vector(384) GENERATED ALWAYS AS 
-				(pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
-							text => content, 
-							kwargs => '{"device": "cuda"}'::jsonb)) STORED;
+				(
+					CASE
+						WHEN content IS NOT NULL AND CONTENT <> '' THEN 
+							pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
+								text => content, 
+								kwargs => '{"device": "cpu"}'::jsonb
+							)
+						ELSE NULL
+					END
+				) STORED;
 			END IF;
 		END $$;
 		`).Error
@@ -160,21 +187,41 @@ func (db *DB) InsertWebsite(website Website) (Website, error) {
 	return website, nil
 }
 
+func (db *DB) DeleteWebsite(websiteId uint) error {
+	chatDelErr := db.conn.Delete(Chat{}, "website_id = ?", websiteId)
+	if chatDelErr.Error != nil {
+		log.Print(chatDelErr.Error)
+		return chatDelErr.Error
+	}
+	pageDelErr := db.conn.Delete(Page{}, "website_id = ?", websiteId)
+	if pageDelErr.Error != nil {
+		log.Print(pageDelErr.Error)
+		return pageDelErr.Error
+	}
+	webDelErr := db.conn.Delete(Website{}, "id = ?", websiteId)
+	if webDelErr.Error != nil {
+		log.Print(webDelErr.Error)
+		return webDelErr.Error
+	}
+
+	return nil
+}
+
 func (db *DB) GetWebsite(id uint) (*Website, error) {
 	var website Website
 	result := db.conn.First(&website, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil // return nil when not found
+			return nil, result.Error
 		}
-		log.Print(result.Error)
 		return nil, result.Error
 	}
-	return &website, nil
+	return &website, result.Error
 }
 
 func (db *DB) InsertPage(page Page) error {
-	page.DateCreated = time.Now()
+	//log.Printf("Updating page: %+v\n", page)
+
 	result := db.conn.Create(&page).Clauses(clause.OnConflict{UpdateAll: true})
 	if result.Error != nil {
 		log.Print(result.Error)
@@ -183,10 +230,41 @@ func (db *DB) InsertPage(page Page) error {
 	return nil
 }
 
-func (db *DB) UpdatePage(page Page) error {
+func (db *DB) UpsertPage(page Page) error {
 	page.DateUpdated = time.Now()
-	result := db.conn.Model(&page).Where("pgml.page.id = ? ", page.ID).Updates(page)
-	return result.Error
+	page.DateCreated = time.Now()
+	hasUpdatedRow, updateErr := db.UpdatePage(page)
+	if !hasUpdatedRow {
+		log.Printf("No page to update - inserting page %v: %v", page.ID, updateErr)
+
+		insertErr := db.InsertPage(page)
+		if insertErr != nil {
+			log.Printf("Error inserting page 2 %v: %v", page.ID, updateErr)
+			return updateErr
+		}
+	} else if updateErr != nil {
+		log.Printf("Error updateErr page 2 %v: %v", page.ID, updateErr)
+
+		panic(updateErr)
+	}
+	return nil
+}
+
+func (db *DB) UpdatePage(page Page) (bool, error) {
+	log.Printf("Updating page: %s\n content len: %+v", page.URL, page)
+	page.DateUpdated = time.Now()
+	page.DateCreated = time.Now()
+	result := db.conn.Model(&page).Where("pgml.page.url = ?", page.URL).Where("pgml.page.website_id= ?", page.WebsiteId).Updates(page)
+
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	// Check if any rows were updated
+	if result.RowsAffected > 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (db *DB) ListWebsites() ([]Website, error) {
@@ -201,25 +279,40 @@ func (db *DB) ListWebsites() ([]Website, error) {
 	return websites, nil
 }
 
-func (db *DB) GetUnprocessedLinks(url string, limit int) ([]Link, error) {
-	var links []Link
+func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterDate time.Time) ([]Page, error) {
+	if limit <= 0 {
+		return nil, errors.New("invalid limit value")
+	}
+	if page <= 0 {
+		return nil, errors.New("invalid page value")
+	}
+	offset := (page - 1) * limit
 
-	urlQuer := url + "%"
-	oneMonthAgo := time.Now().AddDate(0, -1, 0)
-	// Refactor the JOIN and WHERE clauses to reflect the new requirement
-	result := db.conn.Table("pgml.link").
-		Joins("LEFT JOIN pgml.page ON pgml.page.url = pgml.link.url"). // Use LEFT JOIN
-		Where("pgml.link.url LIKE ?", urlQuer).
-		Where("pgml.page.url IS NULL OR LENGTH(pgml.page.content) = 0 OR pgml.page.content IS NULL"). // Either no matching record in page or content is NULL or has zero length
-		Where("(pgml.link.last_processed IS NULL OR pgml.link.last_processed <= ?)", oneMonthAgo).    // Either last_processed is NULL or it's older than a month
+	query := db.conn.
+		Where("website_id = ?", websiteId)
+
+	if !processAll {
+		query = query.Where("LENGTH(content) = 0")
+		query = query.Where("date_updated < ?", afterDate)
+	}
+
+	var pages []Page
+	err := query.
+		Order("date_updated ASC").
 		Limit(limit).
-		Find(&links)
+		Offset(offset).
+		Find(&pages).Error
 
+	return pages, err
+}
+
+func (db *DB) GetCompletedPageUrls(websiteId uint) ([]string, error) {
+	var urls []string
+	result := db.conn.Table("pgml.page").Select("url").Where("LENGTH(content) > 0 AND website_id = ?", websiteId).Scan(&urls)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-
-	return links, nil
+	return urls, nil
 }
 
 func (db *DB) SetLinkProcessed(url string) error {
@@ -291,6 +384,7 @@ func (db *DB) ListChatThreads() ([]ChatThread, error) {
 type PageQueryResult struct {
 	ID       int
 	Content  string
+	Title    string
 	URL      string
 	Keywords string
 	Rank     float64
@@ -303,24 +397,25 @@ func (qr PageQueryResult) String() string {
 func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, error) {
 	var queryResults []PageQueryResult
 
-	rawSQL := fmt.Sprintf(`
+	rawSQL := `
     WITH request AS (
 		SELECT pgml.embed(
 			transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
 			text => $1,
-			kwargs => '{"device": "cuda"}'::jsonb
+			kwargs => '{"device": "cpu"}'::jsonb
 		)::vector(384) AS embedding
 	  )
 	  SELECT
 		id,
 		content,
+		title,
 		url,
 		keywords,
 		embedding <=> (SELECT embedding FROM request) AS cosine_similarity
 	  FROM pgml.page
 	  WHERE website_id = $2
 	  ORDER BY cosine_similarity ASC
-	  LIMIT 3`)
+	  LIMIT 3`
 
 	rows, err := db.conn.Raw(rawSQL, question, websiteId).Rows() // Here we get the raw rows
 	if err != nil {
@@ -333,31 +428,17 @@ func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, 
 		var Id int
 		var url string
 		var content string
+		var title string
 		var keywords string
-		if err := rows.Scan(&Id, &content, &url, &keywords, &rank); err != nil { // Manual scan into individual variables
+		if err := rows.Scan(&Id, &content, &title, &url, &keywords, &rank); err != nil { // Manual scan into individual variables
 			return nil, err
 		}
 		log.Printf("rank %v Id %v content %s\n", rank, Id, content)
-		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, Rank: rank}
+		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, Rank: rank, Title: title}
 		queryResults = append(queryResults, qr)
 	}
 
 	return queryResults, nil
-}
-
-func (db *DB) InsertLink(link Link) error {
-	result := db.conn.Create(&link).Clauses(clause.OnConflict{UpdateAll: true})
-	return result.Error
-}
-
-func (db *DB) UpdateLink(link Link) error {
-	result := db.conn.Table("pgml.link").Where("id = ?").Updates(&link)
-	return result.Error
-}
-
-func (db *DB) unProcessLink(url string) error {
-	log.Print("unProcessLink")
-	return db.conn.Model(&Link{}).Where("url = ?", url).Update("last_processed", "1970-01-01 00:00:00 UTC").Error
 }
 
 type LinkCountResult struct {
@@ -369,18 +450,16 @@ func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 	log.Print(websiteId)
 	// Count total links for the URL
 	var totalLinks int64
-	if err := db.conn.Table("pgml.link").Where("website_id = ?", websiteId).Count(&totalLinks).Error; err != nil {
+	if err := db.conn.Table("pgml.page").Where("pgml.page.website_id = ?", websiteId).Count(&totalLinks).Error; err != nil {
 		return nil, err
 	}
 
 	log.Print("CountLinksAndPages")
-	log.Print(websiteId)
 
 	// Count links that have pages for the URL
 	var linksWithPages int64
-	if err := db.conn.Table("pgml.link").
-		Joins("INNER JOIN pgml.page ON pgml.page.website_id = pgml.link.website_id").
-		Where("pgml.link.website_id = ?", websiteId).Where("LENGTH(pgml.page.content) > 0").
+	if err := db.conn.Table("pgml.page").
+		Where("pgml.page.website_id = ?", websiteId).Where("LENGTH(pgml.page.content) > 0").
 		Count(&linksWithPages).Error; err != nil {
 		return nil, err
 	}
