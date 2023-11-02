@@ -242,6 +242,10 @@ func presentWebsite() http.HandlerFunc {
 	}
 }
 
+func GetPageDoneCacheKey(websiteId uint, url string) string {
+	return fmt.Sprintf("%d:%s", websiteId, url)
+}
+
 func handlePages(ctx context.Context) http.HandlerFunc {
 	log.Print("handlePages")
 	addedPagesSet := make(map[string]struct{})
@@ -342,7 +346,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 	pagesToProcess, err := db.GetPages(website.ID, page, pageSize, processAll, pageUpdatedAfter)
 	linksAlreadyProcessed, apErr := db.GetCompletedPageUrls(website.ID)
 	for _, url := range linksAlreadyProcessed {
-		addedPagesSet[url] = struct{}{}
+		addedPagesSet[GetPageDoneCacheKey(website.ID, url)] = struct{}{}
 	}
 	log.Printf("GetPages got %d links to process [processAll:%v] [pageUpdatedAfter:%v]", len(pagesToProcess), processAll, pageUpdatedAfter)
 	if err != nil || apErr != nil {
@@ -468,7 +472,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 		for _, link := range links {
 			for _, baseUrl := range strings.Split(website.BaseUrl, ",") {
 				if linkCouldBePage(link, baseUrl) {
-					if _, exists := addedPagesSet[link]; !exists {
+					if _, exists := addedPagesSet[GetPageDoneCacheKey(newPage.WebsiteId, link)]; !exists {
 
 						log.Printf("fetchContentFromPages page link %d", link)
 
@@ -478,7 +482,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 							Links:     emptyLink,
 						}
 						newPages = append(newPages, newEmptyPage)
-						addedPagesSet[link] = struct{}{}
+						addedPagesSet[GetPageDoneCacheKey(newPage.WebsiteId, link)] = struct{}{}
 						// You might want to add this newPage to some slice or process it further
 						break
 					} else {
