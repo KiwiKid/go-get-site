@@ -15,27 +15,32 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div id="loadingText" style="display:none">Loading...</div>
 				</form>
 				<h1 class="text-xl mb-4">{ website.BaseUrl }</h1>
-				<h2 class="text-2xl mb-4">Added Pages:</h2>
 				<ul>
 					for link := range addedPagesSet {
-						<li>{ link }</li>
+						<li class="bg-green-400">{ link }</li>
 					}
 				</ul>
-				<form hx-post={ website.websitePagesURL() } hx-target="#container">
+				<form hx-post={ website.websitePagesURL() } hx-target="#container" class="space-y-4">
 					<button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Load more website content</button>
-					<label for="processAll">Ignore Status & existing content</label>
-					<input type="checkbox" name="processAll" id="processAll"/>
+					
+					<div class="flex items-center space-x-2">
+						<input type="checkbox" name="processAll" id="processAll" class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"/>
+						<label for="processAll" class="text-gray-700">Ignore Status/Existing Content</label>
+					</div>
 
-					<label for="processPageSize">Page Size:</label>
-					<select id="processPageSize" name="processPageSize">
-						<option value="1">1</option>
-						<option value="5" selected="selected">5</option>
-						<option value="10">10</option>
-						<option value="25">25</option>
-						<option value="50">50</option>
-						<option value="100">100</option>
-					</select>
+					<div class="flex items-center space-x-2">
+						<label for="processPageSize" class="text-gray-700">Page Size:</label>
+						<select id="processPageSize" name="processPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200">
+							<option value="1">1</option>
+							<option value="5" selected="selected">5</option>
+							<option value="10">10</option>
+							<option value="25">25</option>
+							<option value="50">50</option>
+							<option value="100">100</option>
+						</select>
+					</div>
 				</form>
+
 				@process(count, string(website.ID))
 				<!-- Flexbox header - Can be omitted if not required -->
 				<div class="flex mb-2 font-bold text-sm text-gray-600 border-b-2">

@@ -24,12 +24,13 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	db, err := NewDB()
+	// Uncomment to deploy DB changes (commentted out as it improves rebuild time)
+	/*db, err := NewDB()
 	if err != nil {
 		panic(err)
 	}
-
 	db.Migrate()
+	*/
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -339,8 +340,12 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 	}
 
 	pagesToProcess, err := db.GetPages(website.ID, page, pageSize, processAll, pageUpdatedAfter)
+	linksAlreadyProcessed, apErr := db.GetCompletedPageUrls(website.ID)
+	for _, url := range linksAlreadyProcessed {
+		addedPagesSet[url] = struct{}{}
+	}
 	log.Printf("GetPages got %d links to process [processAll:%v] [pageUpdatedAfter:%v]", len(pagesToProcess), processAll, pageUpdatedAfter)
-	if err != nil {
+	if err != nil || apErr != nil {
 		log.Printf("Error GetLink from %v", err)
 		return err
 	}
@@ -353,14 +358,14 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 		log.Printf("Got %d pagesToSave from fetchContentFromPages", len(pagesToSave))
 
 		for _, page := range pagesToSave {
-			if _, exists := addedPagesSet[page.URL]; !exists {
-				insertErr := db.UpsertPage(page)
-				if insertErr != nil {
-					return insertErr
-				} else {
-					addedPagesSet[page.URL] = struct{}{}
-				}
-			}
+			//if _, exists := addedPagesSet[page.URL]; !exists {
+			insertErr := db.UpsertPage(page)
+			if insertErr != nil {
+				return insertErr
+			} // else {
+			//	addedPagesSet[page.URL] = struct{}{}
+			//}
+			//}
 		}
 	}
 
@@ -462,9 +467,8 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 
 		for _, link := range links {
 			for _, baseUrl := range strings.Split(website.BaseUrl, ",") {
-				if strings.HasPrefix(link, baseUrl) || strings.HasPrefix(link, "/") {
-
-					if linkCouldBePage(link) {
+				if linkCouldBePage(link, baseUrl) {
+					if _, exists := addedPagesSet[link]; !exists {
 
 						log.Printf("fetchContentFromPages page link %d", link)
 
@@ -478,9 +482,10 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 						// You might want to add this newPage to some slice or process it further
 						break
 					} else {
-						log.Printf("fetchContentFromPages non-page link %d", link)
-
+						log.Printf("fetchContentFromPages already added %d", link)
 					}
+				} else {
+					log.Printf("fetchContentFromPages non-page link %d", link)
 				}
 			}
 		}

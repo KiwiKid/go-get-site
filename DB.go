@@ -130,7 +130,6 @@ func (db *DB) Migrate() {
 	db.conn.AutoMigrate(&Page{})
 	db.conn.AutoMigrate(&Website{})
 	db.conn.AutoMigrate(&Chat{})
-	//db.conn.AutoMigrate(&Embedding{})
 
 	// Check if the index exists
 	var count int64
@@ -141,7 +140,7 @@ func (db *DB) Migrate() {
 	`, "pgml.page", "idx_website_url").Scan(&count)
 
 	if count == 0 {
-		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url)")
+		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url) IF EXISTS")
 	}
 
 	err := db.conn.Exec(`
@@ -236,12 +235,16 @@ func (db *DB) UpsertPage(page Page) error {
 	page.DateCreated = time.Now()
 	hasUpdatedRow, updateErr := db.UpdatePage(page)
 	if !hasUpdatedRow {
+		log.Printf("No page to update - inserting page %v: %v", page.ID, updateErr)
+
 		insertErr := db.InsertPage(page)
 		if insertErr != nil {
-			log.Printf("Error saving page 2 %v: %v", page.ID, updateErr)
+			log.Printf("Error inserting page 2 %v: %v", page.ID, updateErr)
 			return updateErr
 		}
 	} else if updateErr != nil {
+		log.Printf("Error updateErr page 2 %v: %v", page.ID, updateErr)
+
 		panic(updateErr)
 	}
 	return nil
@@ -289,8 +292,8 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 		Where("website_id = ?", websiteId)
 
 	if !processAll {
-		query = query.Where("LENGTH(content) > 0")
-		query = query.Where("date_updated > ?", afterDate)
+		query = query.Where("LENGTH(content) = 0")
+		query = query.Where("date_updated < ?", afterDate)
 	}
 
 	var pages []Page
@@ -301,6 +304,15 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 		Find(&pages).Error
 
 	return pages, err
+}
+
+func (db *DB) GetCompletedPageUrls(websiteId uint) ([]string, error) {
+	var urls []string
+	result := db.conn.Table("pgml.page").Select("url").Where("LENGTH(content) > 0 AND website_id = ?", websiteId).Scan(&urls)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return urls, nil
 }
 
 func (db *DB) SetLinkProcessed(url string) error {

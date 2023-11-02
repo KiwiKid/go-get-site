@@ -88,7 +88,7 @@ func stringToUint(s string) (uint, error) {
 	return uint(i), nil
 }
 
-func linkCouldBePage(s string) bool {
+func linkCouldBePage(s string, baseUrl string) bool {
 	nonPageExtensions := map[string]bool{
 		".css":   true,
 		".js":    true,
@@ -140,6 +140,10 @@ func linkCouldBePage(s string) bool {
 		if strings.HasSuffix(strings.ToLower(path), ext) {
 			return false
 		}
+		if !(strings.HasPrefix(path, baseUrl) || strings.HasPrefix(path, "/")) {
+			return false
+		}
+
 	}
 	return true
 }
