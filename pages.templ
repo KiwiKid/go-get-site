@@ -2,7 +2,7 @@ package main
 
 import "strconv"
 
-templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string) {
+templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}) {
 	<html>
 		@header()
 		<body class="bg-gray-100" id="container">
@@ -15,10 +15,26 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div id="loadingText" style="display:none">Loading...</div>
 				</form>
 				<h1 class="text-xl mb-4">{ website.BaseUrl }</h1>
+				<h2 class="text-2xl mb-4">Added Pages:</h2>
+				<ul>
+					for link := range addedPagesSet {
+						<li>{ link }</li>
+					}
+				</ul>
 				<form hx-post={ website.websitePagesURL() } hx-target="#container">
 					<button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Load more website content</button>
-					<label for="processAll">[ALL]</label>
+					<label for="processAll">Ignore Status & existing content</label>
 					<input type="checkbox" name="processAll" id="processAll"/>
+
+					<label for="processPageSize">Page Size:</label>
+					<select id="processPageSize" name="processPageSize">
+						<option value="1">1</option>
+						<option value="5" selected="selected">5</option>
+						<option value="10">10</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+						<option value="100">100</option>
+					</select>
 				</form>
 				@process(count, string(website.ID))
 				<!-- Flexbox header - Can be omitted if not required -->
@@ -33,11 +49,14 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 				for _, item := range pages {
 					<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
 						<div class="flex-1 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{ item.URL }</a></div>
-						if item.ToProcess() {
-							<div>TO_PROCESS</div>
-						} else {
-							<div>DONE</div>
-						}
+						<div>
+							if item.ToProcess() {
+								<div>TO_PROCESS</div>
+							} else {
+								<div>DONE</div>
+							}
+							<div>{item.PageStatus()}</div>
+						</div>
 						<div class="flex-1 p-2">{ item.Keywords }</div>
 						<div class="flex-1 p-2">{ item.Title }</div>
 						<div class="flex-2 p-2">

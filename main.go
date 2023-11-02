@@ -243,6 +243,7 @@ func presentWebsite() http.HandlerFunc {
 
 func handlePages(ctx context.Context) http.HandlerFunc {
 	log.Print("handlePages")
+	addedPagesSet := make(map[string]struct{})
 	db, err := NewDB()
 	if err != nil {
 		panic(err)
@@ -283,22 +284,15 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 				return
 			}
 
-			//websiteURL := vars["websiteUrl"]
-			/*log.Printf("Link: %v %v", website, websiteId)
-			insertErr := db.InsertLink(Link{URL: website.BaseUrl, DateCreated: time.Now(), LastProcessed: time.Now(), WebsiteId: websiteId})
-			if insertErr != nil {
-				log.Printf("Error saving base link %s: %v", website.BaseUrl, insertErr)
-				// return
-			}
-			unProcess := db.unProcessLink(website.BaseUrl)
-			if unProcess != nil {
-				log.Printf("Error unProcessLink link %s: %v", website.BaseUrl, unProcess)
-				// return
-			}*/
 			processAll := r.FormValue("processAll") == "on"
+			processPageSizeStr := r.FormValue("processPageSize")
+			pageSize, err := strconv.Atoi(processPageSizeStr)
+			if err != nil || pageSize <= 0 {
+				pageSize = 5
+			}
 
 			log.Printf("handlePages - processWebsite processAll:%v", processAll)
-			processErr := processWebsite(ctx, *db, *website, processAll)
+			processErr := processWebsite(ctx, *db, *website, processAll, 1, pageSize, addedPagesSet)
 			if processErr != nil {
 				http.Error(w, "Failed to processWebsite", http.StatusInternalServerError)
 				return
@@ -329,13 +323,13 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		prevPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
 		nextPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
 
-		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl)
+		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
 }
 
-func processWebsite(ctx context.Context, db DB, website Website, processAll bool) error {
+func processWebsite(ctx context.Context, db DB, website Website, processAll bool, page int, pageSize int, addedPagesSet map[string]struct{}) error {
 	log.Print("StartProcessingSite ", website.BaseUrl)
 	var pageUpdatedAfter time.Time
 	if processAll {
@@ -344,7 +338,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 		pageUpdatedAfter = time.Now().Add(-7 * 24 * time.Hour)
 	}
 
-	pagesToProcess, err := db.GetPages(website.ID, 1, 5, processAll, pageUpdatedAfter)
+	pagesToProcess, err := db.GetPages(website.ID, page, pageSize, processAll, pageUpdatedAfter)
 	log.Printf("GetPages got %d links to process [processAll:%v] [pageUpdatedAfter:%v]", len(pagesToProcess), processAll, pageUpdatedAfter)
 	if err != nil {
 		log.Printf("Error GetLink from %v", err)
@@ -352,16 +346,20 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 	}
 
 	if len(pagesToProcess) > 0 {
-		pagesToSave, err := fetchContentFromPages(ctx, website, pagesToProcess, 5)
+		pagesToSave, err := fetchContentFromPages(ctx, website, pagesToProcess, 5, addedPagesSet)
 		if err != nil {
 			panic(err)
 		}
 		log.Printf("Got %d pagesToSave from fetchContentFromPages", len(pagesToSave))
 
 		for _, page := range pagesToSave {
-			insertErr := db.UpsertPage(page)
-			if insertErr != nil {
-				return insertErr
+			if _, exists := addedPagesSet[page.URL]; !exists {
+				insertErr := db.UpsertPage(page)
+				if insertErr != nil {
+					return insertErr
+				} else {
+					addedPagesSet[page.URL] = struct{}{}
+				}
 			}
 		}
 	}
@@ -389,7 +387,7 @@ func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp
 	})
 }
 
-func fetchContentFromPages(ctx context.Context, website Website, pages []Page, remainingToProcess int) ([]Page, error) {
+func fetchContentFromPages(ctx context.Context, website Website, pages []Page, remainingToProcess int, addedPagesSet map[string]struct{}) ([]Page, error) {
 	log.Print("fetchContentFromPages:start")
 	var content string
 	var title string
@@ -476,6 +474,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 							Links:     emptyLink,
 						}
 						newPages = append(newPages, newEmptyPage)
+						addedPagesSet[link] = struct{}{}
 						// You might want to add this newPage to some slice or process it further
 						break
 					} else {

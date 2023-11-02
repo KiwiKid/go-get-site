@@ -41,6 +41,10 @@ func (p Page) ToProcess() bool {
 	return len(p.Content) == 0 || p.DateUpdated.Before(time.Now().Add(-7*24*time.Hour))
 }
 
+func (p Page) PageStatus() string {
+	return fmt.Sprintf("[C:%d] [L:%d]", len(p.Content), len(p.Links))
+}
+
 type Website struct {
 	ID                 uint      `gorm:"primary_key"`
 	CustomQueryParam   string    `gorm:"size:1024"`
@@ -155,9 +159,16 @@ func (db *DB) Migrate() {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
 				ALTER TABLE pgml.page 
 				ADD COLUMN embedding vector(384) GENERATED ALWAYS AS 
-				(pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
-							text => content, 
-							kwargs => '{"device": "cuda"}'::jsonb)) STORED;
+				(
+					CASE
+						WHEN content IS NOT NULL AND CONTENT <> '' THEN 
+							pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
+								text => content, 
+								kwargs => '{"device": "cpu"}'::jsonb
+							)
+						ELSE NULL
+					END
+				) STORED;
 			END IF;
 		END $$;
 		`).Error
@@ -211,8 +222,7 @@ func (db *DB) GetWebsite(id uint) (*Website, error) {
 
 func (db *DB) InsertPage(page Page) error {
 	//log.Printf("Updating page: %+v\n", page)
-	page.DateUpdated = time.Now()
-	page.DateCreated = time.Now()
+
 	result := db.conn.Create(&page).Clauses(clause.OnConflict{UpdateAll: true})
 	if result.Error != nil {
 		log.Print(result.Error)
@@ -222,6 +232,8 @@ func (db *DB) InsertPage(page Page) error {
 }
 
 func (db *DB) UpsertPage(page Page) error {
+	page.DateUpdated = time.Now()
+	page.DateCreated = time.Now()
 	hasUpdatedRow, updateErr := db.UpdatePage(page)
 	if !hasUpdatedRow {
 		insertErr := db.InsertPage(page)
@@ -378,7 +390,7 @@ func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, 
 		SELECT pgml.embed(
 			transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
 			text => $1,
-			kwargs => '{"device": "cuda"}'::jsonb
+			kwargs => '{"device": "cpu"}'::jsonb
 		)::vector(384) AS embedding
 	  )
 	  SELECT
