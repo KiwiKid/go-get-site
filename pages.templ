@@ -13,7 +13,7 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 				@login(website)
 				<h1 class="text-4xl font-bold mb-6">PAGES</h1>
 				<details>
-					<summary>{ strconv.Itoa(len(addedPagesSet)) } new pages added - 				<div>@process(count, string(website.ID))</div></summary>
+					<summary>{ strconv.Itoa(len(addedPagesSet)) } new pages added - 				<div>@process(count, website)</div></summary>
 					<ul>
 						for link := range addedPagesSet {
 							<li class="bg-green-400">{ link }</li>

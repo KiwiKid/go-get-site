@@ -146,22 +146,16 @@ func linkCouldBePage(s string, baseUrl string) bool {
 	// Extract only the path, ignoring query and fragment
 	path := u.EscapedPath()
 
-	log.Printf("url is being checked: %s is base: %t     is relative: %t", s, strings.HasPrefix(path, baseUrl), strings.HasPrefix(path, baseUrl))
+	log.Printf("linkCouldBePage %s is base: %t     is relative: %t", s, strings.HasPrefix(path, baseUrl), strings.HasPrefix(path, "/"))
 	// Check the extension
 	for ext := range nonPageExtensions {
 		if strings.HasSuffix(strings.ToLower(path), ext) {
-			log.Printf("url is invali (HasSuffix): %s", s)
+			log.Printf("linkCouldBePage-INVALID: %s", s)
 
 			return false
 		}
 	}
 
-	if !(strings.HasPrefix(path, baseUrl) || strings.HasPrefix(path, "/")) {
-		log.Printf("url is invalid (HasPrefix): %s", s)
-		return false
-	}
-
-	log.Printf("url is valid: %s", s)
-
-	return true
+	log.Printf("linkCouldBePage-PASSED 1/2: %t baseUrl:%t slash:%t\n%s", strings.HasPrefix(path, baseUrl) || strings.HasPrefix(path, "/"), strings.HasPrefix(path, baseUrl), strings.HasPrefix(path, "/"), baseUrl)
+	return strings.HasPrefix(s, baseUrl) || strings.HasPrefix(s, "/")
 }

@@ -531,7 +531,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
-		success := network.SetCookie(name, value).
+		err := network.SetCookie(name, value).
 			WithExpires(&expr).
 			WithDomain(domain).
 			WithPath(path).
@@ -539,7 +539,7 @@ func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp
 			WithSecure(secure).
 			Do(ctx)
 
-		if success.Error != nil {
+		if err != nil {
 			return fmt.Errorf("could not set cookie %s", name)
 		} else {
 			log.Print("Set cookie")
@@ -568,7 +568,7 @@ func getLoginTasks(website Website) []chromedp.Action {
 	if url != "" {
 
 		tasks = append(tasks,
-			logAction("Navigate-to:", url, false),
+			logAction("Navigate-to:start", url, false),
 			chromedp.Navigate(url),
 			logAction("Navigate-to-success:", url, false),
 		)
@@ -634,7 +634,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			logAction("fetchContentFromPages:Navigate-to:Success", page.URL, false),
 			chromedp.Evaluate(`document.title`, &title),
 			chromedp.Evaluate(`document.body.innerText`, &content),
-			logAction(fmt.Sprintf("fetchContentFromPages:Got Title (%d) and Content (%d)", title, content), page.URL, false),
+			logAction(fmt.Sprintf("fetchContentFromPages:Got Title (%d) and Content (%d)", len(title), len(content)), page.URL, false),
 			chromedp.Evaluate(`document.body.innerText`, &content),
 			logAction("fetchContentFromPages:GetLinks", page.URL, false),
 			chromedp.Evaluate(allLinksJS, &links),
@@ -656,7 +656,6 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			Links:     links,
 			WebsiteId: website.ID,
 		}
-		log.Printf("fetchContentFromPages - got %d Links: (%d)", len(links), website.BaseUrl)
 		log.Printf("fetchContentFromPages - new page \n%v", newPage)
 		// ADD the Page object to the "pages" list
 		newPages = append(newPages, newPage)
@@ -666,14 +665,14 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			for _, baseUrl := range strings.Split(website.BaseUrl, ",") {
 				link, err = stripAnchors(link)
 				if err != nil {
-					log.Printf("fetchContentFromPages non-page link %d", link)
+					log.Printf("fetchContentFromPages non-page link %s", link)
 					panic(err)
 				}
 				if linkCouldBePage(link, baseUrl) {
 
 					if _, exists := addedPagesSet[GetPageDoneCacheKey(newPage.WebsiteId, link)]; !exists {
 
-						log.Printf("fetchContentFromPages page link %d", link)
+						log.Printf("fetchContentFromPages page link %s", link)
 
 						newEmptyPage := Page{
 
@@ -686,10 +685,10 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 						// You might want to add this newPage to some slice or process it further
 						break
 					} else {
-						log.Printf("fetchContentFromPages already added %d", link)
+						log.Printf("fetchContentFromPages already added %s", link)
 					}
 				} else {
-					log.Printf("fetchContentFromPages could not parse link %d", link)
+					log.Printf("fetchContentFromPages could not parse link %s", link)
 				}
 
 			}
@@ -727,7 +726,13 @@ func presentLinkCount() http.HandlerFunc {
 			return
 		}
 
-		pagesComp := process(*count, websiteIdStr)
+		website, webErr := db.GetWebsite(websiteId)
+		if webErr != nil {
+			log.Printf("Error CountLinksAndPages link %d: %v", websiteId, webErr)
+			return
+		}
+
+		pagesComp := process(*count, *website)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}

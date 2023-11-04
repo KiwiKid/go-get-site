@@ -94,6 +94,10 @@ func (w *Website) websiteURL() string {
 	return fmt.Sprintf("/site/%d", w.ID)
 }
 
+func (w *Website) getProcessURL() string {
+	return fmt.Sprintf("/process/%d", w.ID)
+}
+
 func (w *Website) websiteURLWithPostFix(postfix string) string {
 	return fmt.Sprintf("/site/%d/%s", w.ID, postfix)
 }
@@ -290,7 +294,7 @@ func (db *DB) UpsertPage(page Page) error {
 		insertErr := db.InsertPage(page)
 		if insertErr != nil {
 			log.Printf("Error inserting page 2 %v: %v", page.ID, updateErr)
-			return insertErr
+			return updateErr
 		}
 	} else if updateErr != nil {
 		log.Printf("Error updateErr page 2 %v: %v", page.ID, updateErr)

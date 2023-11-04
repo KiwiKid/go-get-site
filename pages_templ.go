@@ -101,7 +101,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		err = process(count, string(website.ID)).Render(ctx, templBuffer)
+		err = process(count, website).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
