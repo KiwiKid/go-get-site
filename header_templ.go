@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func header() templ.Component {
+func header(header string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -26,21 +26,17 @@ func header() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_2 := `❓ Asker`
+		var_2 := `❓ Asker - `
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</title><!--")
+		var var_3 string = header
+		_, err = templBuffer.WriteString(templ.EscapeString(var_3))
 		if err != nil {
 			return err
 		}
-		var_3 := ` HTMX reference `
-		_, err = templBuffer.WriteString(var_3)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("--><script src=\"https://unpkg.com/htmx.org@1.9.6\">")
+		_, err = templBuffer.WriteString("</title><script src=\"https://unpkg.com/htmx.org@1.9.6\">")
 		if err != nil {
 			return err
 		}

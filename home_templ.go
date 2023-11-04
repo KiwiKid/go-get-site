@@ -26,7 +26,7 @@ func home(websites []Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		err = header().Render(ctx, templBuffer)
+		err = header("").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -34,7 +34,7 @@ func home(websites []Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		err = nav().Render(ctx, templBuffer)
+		err = nav("").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}

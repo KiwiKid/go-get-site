@@ -28,7 +28,7 @@ func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) te
 		if err != nil {
 			return err
 		}
-		err = header().Render(ctx, templBuffer)
+		err = header("chat").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -36,7 +36,7 @@ func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) te
 		if err != nil {
 			return err
 		}
-		err = nav().Render(ctx, templBuffer)
+		err = nav("chat").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}

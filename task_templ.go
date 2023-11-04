@@ -26,7 +26,7 @@ func task(siteUrl string) templ.Component {
 		if err != nil {
 			return err
 		}
-		err = header().Render(ctx, templBuffer)
+		err = header("task").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}

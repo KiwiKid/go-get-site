@@ -1,13 +1,14 @@
 package main 
 
 templ task(siteUrl string) {
-    <html lang="en">
-   @header()
-    <body>
-    <div hx-get={siteUrl} hx-trigger="load">
-    {siteUrl}
-    <img  alt="Result loading..." class="htmx-indicator" width="150" src="/img/bars.svg"/>
-    </div>
-    </body>
-    </html>
+	<html lang="en">
+		@header("task")
+		<body>
+			<div hx-get={ siteUrl } hx-trigger="load">
+				{ siteUrl }
+				<img alt="Result loading..." class="htmx-indicator" width="150" src="/img/bars.svg"/>
+			</div>
+		</body>
+	</html>
 }
+

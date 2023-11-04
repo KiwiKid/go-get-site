@@ -4,32 +4,29 @@ import "strconv"
 
 templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}) {
 	<html>
-		@header()
+		@header(website.BaseUrl)
 		<body class="bg-gray-100" id="container">
-			@nav()
+			@nav(website.BaseUrl)
 			<div class="container mx-auto mt-12 p-4">
 				<a href={ templ.URL(website.websiteURL()) } class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Refresh</a>
+				@editWebsite(website)
+				@login(website)
 				<h1 class="text-4xl font-bold mb-6">PAGES</h1>
-				<form hx-delete={ website.websiteURL() } hx-swap="outerHTML" hx-target="#container" hx-indicator="#loadingText">
-					<button type="submit" class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">delete</button>
-					<div id="loadingText" style="display:none">Loading...</div>
-				</form>
-				<h1 class="text-xl mb-4">{ website.BaseUrl }</h1>
-				<details><summary>{ strconv.Itoa(len(addedPagesSet)) }</summary>
-				<ul>
-					for link := range addedPagesSet {
-						<li class="bg-green-400">{ link }</li>
-					}
-				</ul>
+				<details>
+					<summary>{ strconv.Itoa(len(addedPagesSet)) } new pages added - 				<div>@process(count, string(website.ID))</div></summary>
+					<ul>
+						for link := range addedPagesSet {
+							<li class="bg-green-400">{ link }</li>
+						}
+					</ul>
 				</details>
 				<form hx-post={ website.websitePagesURL() } hx-target="#container" class="space-y-4">
-					<button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Load more website content</button>
-					
+					<div id="loading-page-processing" style="display:none">Loading...</div>
+					<button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Load more website content</button>
 					<div class="flex items-center space-x-2">
 						<input type="checkbox" name="processAll" id="processAll" class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"/>
 						<label for="processAll" class="text-gray-700">Ignore Status/Existing Content</label>
 					</div>
-
 					<div class="flex items-center space-x-2">
 						<label for="processPageSize" class="text-gray-700">Page Size:</label>
 						<select id="processPageSize" name="processPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200">
@@ -42,52 +39,50 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 						</select>
 					</div>
 				</form>
-
-				@process(count, string(website.ID))
 				<!-- Flexbox header - Can be omitted if not required -->
 				<div class="flex mb-2 font-bold text-sm text-gray-600 border-b-2">
-					<div class="flex-1 p-2">URL</div>
-					<div class="flex-1 p-2">Keywords</div>
-					<div class="flex-1 p-2">Title</div>
-					<div class="flex-2 p-2">Content + Links</div>
-					<div class="flex-1 p-2">Date Created</div>
-					<div class="flex-1 p-2">Date Updated</div>
+					<div class="w-1/3 p-2">URL</div>
+					<div class="w-1/4 p-2">Status</div>
+					<div class="w-1/4 p-2">Title</div>
+					<div class="w-1/4 p-2">Content + Links</div>
 				</div>
 				for _, item := range pages {
 					<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
-						<div class="flex-1 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{ item.URL }</a></div>
-						<div>
-							if item.ToProcess() {
-								<div>TO_PROCESS</div>
-							} else {
-								<div>DONE</div>
-							}
-							<div>{item.PageStatus()}</div>
+						<div class="w-1/3 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{ item.URL }</a></div>
+						<div class="w-1/4 p-2">
+							<details>
+								if item.ToProcess() {
+									<summary>TO_PROCESS</summary>
+								} else {
+									<summary>DONE</summary>
+								}
+								{ item.DateCreated.Local().Format(format) }
+								{ item.DateUpdated.Local().Format(format)  }
+								<div>{ item.PageStatus() }</div>
+							</details>
 						</div>
-						<div class="flex-1 p-2">{ item.Keywords }</div>
-						<div class="flex-1 p-2">{ item.Title }</div>
-						<div class="flex-2 p-2">
+						<div class="w-1/4 p-2">{ item.Title }</div>
+						<div class="w-1/4 p-2">
 							<details>
 								<summary class="cursor-pointer">Content: ({ strconv.Itoa(len(item.Content)) }) Links: ({ strconv.Itoa(len(item.Links)) })</summary>
 								<h2>Content</h2>
 								{ item.Content }
 								<br/>
-								<h2>Links</h2>
-								<div>
+								<details>
+									<summary><h2>Links ({ strconv.Itoa(len(item.Links)) })</h2></summary>
 									<ul>
 										for _, link := range item.Links {
 											<li>{ link }</li>
 										}
 									</ul>
-								</div>
+								</details>
 							</details>
 						</div>
-						<div class="flex-1 p-2">{ item.DateCreated.Local().String() }</div>
-						<div class="flex-1 p-2">{ item.DateUpdated.Local().String() }</div>
 					</div>
 				}
 			</div>
 		</body>
+		@websiteDelete(website)
 	</html>
 }
 

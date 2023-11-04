@@ -28,7 +28,7 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 		if err != nil {
 			return err
 		}
-		err = header().Render(ctx, templBuffer)
+		err = header("chat2").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -36,7 +36,7 @@ func threads(threads []ChatThread, newThreadURL string, websites []Website) temp
 		if err != nil {
 			return err
 		}
-		err = nav().Render(ctx, templBuffer)
+		err = nav("chat2").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}

@@ -4,9 +4,9 @@ import "strconv"
 
 templ chat(threadId string, websiteId string, newChatUrl string, chats []Chat) {
 	<html>
-		@header()
+		@header("chat")
 		<body id="container">
-			@nav()
+			@nav("chat")
 			<div>
 				<h1>Chat</h1>
 				<div>

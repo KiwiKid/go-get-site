@@ -4,9 +4,9 @@ import "strconv"
 
 templ threads(threads []ChatThread, newThreadURL string, websites []Website) {
 	<html>
-		@header()
+		@header("chat2")
 		<body id="container">
-			@nav()
+			@nav("chat2")
 			<main class="flex justify-center mt-6">
 				<aside class="w-1/4 border-r border-gray-200 p-4">
 					<h1>Threads</h1>

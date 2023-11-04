@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func nav() templ.Component {
+func nav(header string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -77,7 +77,16 @@ func nav() templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("--></div></nav></div></div>")
+		_, err = templBuffer.WriteString("--></div><h1>")
+		if err != nil {
+			return err
+		}
+		var var_8 string = header
+		_, err = templBuffer.WriteString(templ.EscapeString(var_8))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</h1></nav></div></div>")
 		if err != nil {
 			return err
 		}

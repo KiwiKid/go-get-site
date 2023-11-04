@@ -19,8 +19,8 @@ type StrArray []string
 
 type Page struct {
 	ID            uint            `gorm:"primary_key"`
-	Title         string          `gorm:"size:255"`
-	Keywords      string          `gorm:"size:255"`
+	Title         string          `gorm:"size:512"`
+	Keywords      string          `gorm:"size:512"`
 	Content       string          `gorm:"type:text"`
 	Embedding     []byte          `gorm:"-"`
 	URL           string          `gorm:"size:255"`
@@ -42,20 +42,27 @@ func (p Page) ToProcess() bool {
 	return len(p.Content) == 0 || p.DateUpdated.Before(time.Now().Add(-7*24*time.Hour))
 }
 
+const format = "2006-01-02 15:04:05"
+
 func (p Page) PageStatus() string {
-	return fmt.Sprintf("[C:%d] [L:%d]", len(p.Content), len(p.Links))
+	return fmt.Sprintf("%s", fmt.Sprintf("[P:%s]", p.DateProcessed.Format(format)))
 }
 
 type Website struct {
-	ID                 uint      `gorm:"primary_key"`
-	CustomQueryParam   string    `gorm:"size:1024"`
-	BaseUrl            string    `gorm:"size:1024"`
-	StartUrl           string    `gorm:"size:1024"`
-	DateCreated        time.Time `gorm:"type:timestamp"`
-	LoginName          string    `gorm:"size:255"`
-	LoginPass          string    `gorm:"size:255"`
-	RequestCookieName  string    `gorm:"size:255"`
-	RequestCookieValue string    `gorm:"size:255"`
+	ID                       uint      `gorm:"primary_key"`
+	CustomQueryParam         string    `gorm:"size:1024"`
+	BaseUrl                  string    `gorm:"size:1024"`
+	StartUrl                 string    `gorm:"size:1024"`
+	RemoveAnchorTags         bool      `gorm:"type:boolean;default:true"`
+	DateCreated              time.Time `gorm:"type:timestamp"`
+	LoginName                string    `gorm:"size:512"`
+	LoginNameSelector        string    `gorm:"size:512"`
+	LoginPass                string    `gorm:"size:512"`
+	LoginPassSelector        string    `gorm:"size:512"`
+	SubmitButtonSelector     string    `gorm:"size:512"`
+	SuccessIndicatorSelector string    `gorm:"size:512"`
+	RequestCookieName        string    `gorm:"size:512"`
+	RequestCookieValue       string    `gorm:"size:512"`
 }
 
 func (Website) TableName() string {
@@ -87,8 +94,20 @@ func (w *Website) websiteURL() string {
 	return fmt.Sprintf("/site/%d", w.ID)
 }
 
+func (w *Website) websiteURLWithPostFix(postfix string) string {
+	return fmt.Sprintf("/site/%d/%s", w.ID, postfix)
+}
+
 func (w *Website) websitePagesURL() string {
 	return fmt.Sprintf("/site/%d/pages", w.ID)
+}
+
+func (w *Website) websiteNavigateURL() string {
+	return fmt.Sprintf("%s?%s", w.BaseUrl, w.CustomQueryParam)
+}
+
+func (w *Website) websiteLoginURL() string {
+	return fmt.Sprintf("/site/%d/login", w.ID)
 }
 
 func (w *ChatThread) ChatThreadURL() string {
@@ -188,6 +207,24 @@ func (db *DB) InsertWebsite(website Website) (Website, error) {
 	return website, nil
 }
 
+func (db *DB) UpdateWebsite(website Website) (Website, error) {
+	// Fetch the existing record to ensure it exists
+	var existing Website
+	if err := db.conn.First(&existing, website.ID).Error; err != nil {
+		log.Print(err)
+		return Website{}, err
+	}
+
+	// Update the record
+	result := db.conn.Model(&existing).Updates(website)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return Website{}, result.Error
+	}
+
+	return website, nil
+}
+
 func (db *DB) DeleteWebsite(websiteId uint) error {
 	chatDelErr := db.conn.Delete(Chat{}, "website_id = ?", websiteId)
 	if chatDelErr.Error != nil {
@@ -205,6 +242,15 @@ func (db *DB) DeleteWebsite(websiteId uint) error {
 		return webDelErr.Error
 	}
 
+	return nil
+}
+
+func (db *DB) DeletePages(websiteId uint) error {
+	pageDelErr := db.conn.Delete(Page{}, "website_id = ?", websiteId)
+	if pageDelErr.Error != nil {
+		log.Print(pageDelErr.Error)
+		return pageDelErr.Error
+	}
 	return nil
 }
 
@@ -244,7 +290,7 @@ func (db *DB) UpsertPage(page Page) error {
 		insertErr := db.InsertPage(page)
 		if insertErr != nil {
 			log.Printf("Error inserting page 2 %v: %v", page.ID, updateErr)
-			return updateErr
+			return insertErr
 		}
 	} else if updateErr != nil {
 		log.Printf("Error updateErr page 2 %v: %v", page.ID, updateErr)

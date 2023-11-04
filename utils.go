@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -88,6 +89,16 @@ func stringToUint(s string) (uint, error) {
 	return uint(i), nil
 }
 
+func stripAnchors(link string) (string, error) {
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return "", err
+	}
+	// Clear out the fragment (which is the anchor tag part of a URL)
+	parsed.Fragment = ""
+	return parsed.String(), nil
+}
+
 func linkCouldBePage(s string, baseUrl string) bool {
 	nonPageExtensions := map[string]bool{
 		".css":   true,
@@ -135,15 +146,22 @@ func linkCouldBePage(s string, baseUrl string) bool {
 	// Extract only the path, ignoring query and fragment
 	path := u.EscapedPath()
 
+	log.Printf("url is being checked: %s is base: %t     is relative: %t", s, strings.HasPrefix(path, baseUrl), strings.HasPrefix(path, baseUrl))
 	// Check the extension
 	for ext := range nonPageExtensions {
 		if strings.HasSuffix(strings.ToLower(path), ext) {
-			return false
-		}
-		if !(strings.HasPrefix(path, baseUrl) || strings.HasPrefix(path, "/")) {
-			return false
-		}
+			log.Printf("url is invali (HasSuffix): %s", s)
 
+			return false
+		}
 	}
+
+	if !(strings.HasPrefix(path, baseUrl) || strings.HasPrefix(path, "/")) {
+		log.Printf("url is invalid (HasPrefix): %s", s)
+		return false
+	}
+
+	log.Printf("url is valid: %s", s)
+
 	return true
 }

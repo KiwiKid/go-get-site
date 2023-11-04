@@ -1,0 +1,20 @@
+package main
+
+templ login(website Website) {
+	<div id="login-test">
+		<button class="bg-blue-600 p-4" hx-get={ website.websiteLoginURL ( ) } hx-target="#login-test" hx-swap="outerHTML">Test Login</button>
+	</div>
+}
+
+templ loginResult(website Website, title string, content string, errorMes string, runErr string) {
+	<div id="login-test">
+		<button class="bg-blue-600 p-4" hx-get={ website.websiteLoginURL() } hx-target="#login-test" hx-swap="outerHTML">Test Login</button>
+		<div>
+			<div>{ title }</div>
+			<div>{ content }</div>
+			<div class="bg-red-300">{ errorMes }</div>
+			<div class="bg-red-300">{ runErr }</div>
+		</div>
+	</div>
+}
+
