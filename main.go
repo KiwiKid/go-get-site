@@ -382,7 +382,7 @@ func presentLogin(ctx context.Context) http.HandlerFunc {
 		chromeRunErr := chromedp.Run(ctx, tasks...)
 		if chromeRunErr != nil {
 			log.Printf("Error logging in for websiteIdStr %s: %v", websiteIdStr, chromeRunErr)
-			loginRes := loginResult(*website, title, content, fmt.Sprintf("Error logging in for websiteIdStr"), chromeRunErr.Error())
+			loginRes := loginResult(*website, title, content, fmt.Sprintf("Error logging in for websiteIdStr %s", websiteIdStr), chromeRunErr.Error())
 
 			templ.Handler(loginRes).ServeHTTP(w, r)
 
@@ -476,11 +476,25 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
+		prog := Progress{
+			Total: count.TotalLinks,
+			Done:  count.LinksHavePages,
+		}
+
 		thisPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
 		prevPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
-		nextPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
 
-		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet)
+		var nextPageUrl string
+		if count.TotalLinks > (page * pageSize) {
+			nextPageUrl = fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
+		} else {
+			nextPageUrl = ""
+		}
+
+		percentage := fmt.Sprintf("%f", (float64(prog.Done) / float64(prog.Total) * 100.0))
+		log.Printf("percentage percentage percentage %s", percentage)
+
+		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet, percentage)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
@@ -604,9 +618,7 @@ func getLoginTasks(website Website) []chromedp.Action {
 
 func fetchContentFromPages(ctx context.Context, website Website, pages []Page, remainingToProcess int, addedPagesSet map[string]struct{}) ([]Page, error) {
 	log.Print("fetchContentFromPages:start")
-	var content string
-	var title string
-	var links []string
+
 	var newPages []Page
 
 	allLinksJS := `Array.from(document.querySelectorAll("*[href]")).map((i) => i.href)`
@@ -625,6 +637,11 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 	}
 
 	for _, page := range pages {
+
+		var title string
+		var content string
+		var links []string
+
 		log.Printf("fetchContentFromPages Starting Page %s", page.URL)
 
 		// Add the rest of the tasks
@@ -643,7 +660,17 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 
 		err := chromedp.Run(ctx, tasks...)
 		if err != nil {
-			log.Printf("Error fetching content for page %s: %v", page.URL, err)
+			msg := fmt.Sprintf("Error fetching content for page %s: %s", page.URL, err.Error())
+
+			db, dbErr := NewDB()
+			if dbErr != nil {
+				panic(dbErr)
+			}
+
+			setWarErr := db.UpdateWarning(page.ID, msg)
+			if setWarErr != nil {
+				panic(setWarErr)
+			}
 			panic(err)
 			// return newPages, err
 		}
@@ -688,7 +715,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 						log.Printf("fetchContentFromPages already added %s", link)
 					}
 				} else {
-					log.Printf("fetchContentFromPages could not parse link %s", link)
+					log.Printf("fetchContentFromPages not a relvant link %s", link)
 				}
 
 			}
@@ -698,8 +725,6 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			return newPages, nil
 		}
 	}
-
-	log.Printf("fetchContentFromPages Finished page eval %s \n%s \n%s", title, content, links)
 
 	log.Print("Finished tasks")
 	return newPages, nil

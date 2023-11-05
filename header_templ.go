@@ -63,6 +63,27 @@ func header(header string) templ.Component {
 		if err != nil {
 			return err
 		}
+		_, err = templBuffer.WriteString("</script><script>")
+		if err != nil {
+			return err
+		}
+		var_7 := `
+		document.addEventListener("DOMContentLoaded", function() {
+			// Grab all elements with the 'data-progress' attribute
+			const progressElements = document.querySelectorAll("[data-progress]");
+
+			progressElements.forEach(function(element) {
+				const progressValue = element.getAttribute("data-progress");
+				element.style.width = ` + "`" + `${progressValue}%` + "`" + `;
+				console.log("SET progressElements"+progressValue)
+			});
+		});
+
+		`
+		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
 		_, err = templBuffer.WriteString("</script></head>")
 		if err != nil {
 			return err

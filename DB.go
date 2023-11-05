@@ -25,6 +25,7 @@ type Page struct {
 	Embedding     []byte          `gorm:"-"`
 	URL           string          `gorm:"size:255"`
 	Links         JSONStringArray `gorm:"type:jsonb"`
+	Warning       string          `gorm:"size:1024"`
 	IsSeedUrl     bool            `gorm:"type:boolean;default:false;not null"`
 	DateCreated   time.Time       `gorm:"type:timestamp"`
 	DateUpdated   time.Time       `gorm:"type:timestamp"`
@@ -45,7 +46,7 @@ func (p Page) ToProcess() bool {
 const format = "2006-01-02 15:04:05"
 
 func (p Page) PageStatus() string {
-	return fmt.Sprintf("%s", fmt.Sprintf("[P:%s]", p.DateProcessed.Format(format)))
+	return fmt.Sprintf("[P:%s]", p.DateProcessed.Format(format))
 }
 
 type Website struct {
@@ -278,6 +279,23 @@ func (db *DB) InsertPage(page Page) error {
 		log.Print(result.Error)
 		return result.Error
 	}
+	return nil
+}
+
+func (db *DB) UpdateWarning(pageID uint, warning string) error {
+	page := Page{ID: pageID, Warning: warning}
+
+	result := db.conn.Model(&page).Where("id = ?", pageID).Update("warning", warning)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Check if any rows were updated
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("No page found with ID %d to update warning", pageID)
+	}
+
 	return nil
 }
 

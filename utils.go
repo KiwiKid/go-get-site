@@ -45,6 +45,20 @@ func doubleEscape(str string) templ.Component {
 
 }
 
+type Progress struct {
+	Total int
+	Done  int
+}
+
+func (p Progress) getProgress(withWidth bool) string {
+	percentage := float64(p.Done) / float64(p.Total) * 100.0
+
+	if withWidth {
+		return fmt.Sprintf("width:%.2f%%", percentage)
+	}
+	return fmt.Sprintf("%.2f%%", percentage)
+}
+
 func addQueryParam(originalURL, fromValue string) (string, error) {
 	// Parse the original URL
 	u, err := url.Parse(originalURL)
@@ -140,22 +154,37 @@ func linkCouldBePage(s string, baseUrl string) bool {
 	// Parse the href to a URL structure
 	u, err := url.Parse(s)
 	if err != nil {
+		log.Printf("failed to parse:check %s %v\n", s, err)
 		return false
 	}
+	if len(u.String()) == 0 {
+		log.Printf("failed to parse:check (empty string) %s\n", s)
 
+		return false
+	}
+	bu, buErr := url.Parse(baseUrl)
+	if buErr != nil {
+		return false
+	}
 	// Extract only the path, ignoring query and fragment
 	path := u.EscapedPath()
 
-	log.Printf("linkCouldBePage %s is base: %t     is relative: %t", s, strings.HasPrefix(path, baseUrl), strings.HasPrefix(path, "/"))
+	log.Printf("linkCouldBePage:check %s\n", s)
 	// Check the extension
 	for ext := range nonPageExtensions {
 		if strings.HasSuffix(strings.ToLower(path), ext) {
-			log.Printf("linkCouldBePage-INVALID: %s", s)
-
 			return false
 		}
 	}
 
-	log.Printf("linkCouldBePage-PASSED 1/2: %t baseUrl:%t slash:%t\n%s", strings.HasPrefix(path, baseUrl) || strings.HasPrefix(path, "/"), strings.HasPrefix(path, baseUrl), strings.HasPrefix(path, "/"), baseUrl)
-	return strings.HasPrefix(s, baseUrl) || strings.HasPrefix(s, "/")
+	baseDomain := bu.Host
+	pathDomain := u.Host
+
+	if baseDomain == pathDomain || strings.HasPrefix(s, "/") {
+		log.Print("linkCouldBePage:VALID\n")
+		return true
+	} else {
+		log.Print("linkCouldBePage:INVALID\n")
+		return false
+	}
 }

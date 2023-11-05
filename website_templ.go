@@ -86,15 +86,7 @@ func editWebsite(website Website) templ.Component {
 			var_4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div><div class=\"mt-8\"><form hx-put=\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(templ.EscapeString(website.websiteURL()))
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4 border border-gray-300 rounded p-4\"><div class=\"text-gray-700 font-bold mb-4\">")
+		_, err = templBuffer.WriteString("<div><div class=\"mt-8\"><details><summary><div class=\"text-gray-700 font-bold mb-4\">")
 		if err != nil {
 			return err
 		}
@@ -108,7 +100,15 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</div><label for=\"websiteUrl\" class=\"block text-sm font-medium text-gray-600\">")
+		_, err = templBuffer.WriteString("</div></summary><form hx-put=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(website.websiteURL()))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" hx-swap=\"outerHTML\" hx-target=\"#container\" class=\"space-y-4 border border-gray-300 rounded p-4\"><label for=\"websiteUrl\" class=\"block text-sm font-medium text-gray-600\">")
 		if err != nil {
 			return err
 		}
@@ -244,7 +244,15 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("\" class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div></details><div class=\"mt-6\"><input type=\"submit\" value=\"Update website\" class=\"w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div></form></div></div>")
+		_, err = templBuffer.WriteString("\" class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div></details><div class=\"mt-6\"><input type=\"submit\" value=\"Update website\" class=\"w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div>")
+		if err != nil {
+			return err
+		}
+		err = login(website).Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</form></details></div></div>")
 		if err != nil {
 			return err
 		}
@@ -310,7 +318,16 @@ func websiteDelete(website Website) templ.Component {
 			var_18 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div><button hx-loading=\"#loading\" hx-delete=\"")
+		_, err = templBuffer.WriteString("<div><details><summary>")
+		if err != nil {
+			return err
+		}
+		var_19 := `delete`
+		_, err = templBuffer.WriteString(var_19)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</summary><button hx-target=\"#container\" hx-loading=\"#loading\" hx-delete=\"")
 		if err != nil {
 			return err
 		}
@@ -322,12 +339,12 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_19 := `delete pages`
-		_, err = templBuffer.WriteString(var_19)
+		var_20 := `reset pages`
+		_, err = templBuffer.WriteString(var_20)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</button><button hx-loading=\"#loading\" hx-delete=\"")
+		_, err = templBuffer.WriteString("</button><button hx-target=\"#container\" hx-loading=\"#loading\" hx-confirm=\"This will delete all info related to this website\" hx-delete=\"")
 		if err != nil {
 			return err
 		}
@@ -339,8 +356,8 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_20 := `delete website`
-		_, err = templBuffer.WriteString(var_20)
+		var_21 := `DELETE`
+		_, err = templBuffer.WriteString(var_21)
 		if err != nil {
 			return err
 		}
@@ -348,12 +365,12 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_21 := `Loading...`
-		_, err = templBuffer.WriteString(var_21)
+		var_22 := `Loading...`
+		_, err = templBuffer.WriteString(var_22)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</div></div>")
+		_, err = templBuffer.WriteString("</div></details></div>")
 		if err != nil {
 			return err
 		}

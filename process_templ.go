@@ -38,7 +38,7 @@ func process(count LinkCountResult, website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_2 := `processed `
+		var_2 := `Got content for `
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
@@ -48,22 +48,35 @@ func process(count LinkCountResult, website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</span><span>")
+		_, err = templBuffer.WriteString(" ")
 		if err != nil {
 			return err
 		}
-		var_4 := `(out of `
+		var_4 := `pages `
 		_, err = templBuffer.WriteString(var_4)
 		if err != nil {
 			return err
 		}
-		var var_5 string = strconv.Itoa(count.TotalLinks)
-		_, err = templBuffer.WriteString(templ.EscapeString(var_5))
+		_, err = templBuffer.WriteString("</span><span>")
 		if err != nil {
 			return err
 		}
-		var_6 := `)`
-		_, err = templBuffer.WriteString(var_6)
+		var_5 := `out of `
+		_, err = templBuffer.WriteString(var_5)
+		if err != nil {
+			return err
+		}
+		var var_6 string = strconv.Itoa(count.TotalLinks)
+		_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" ")
+		if err != nil {
+			return err
+		}
+		var_7 := `pages seen`
+		_, err = templBuffer.WriteString(var_7)
 		if err != nil {
 			return err
 		}

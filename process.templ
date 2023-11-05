@@ -6,8 +6,8 @@ import (
 
 templ process(count LinkCountResult, website Website) {
 	<div hx-get={ website.getProcessURL() } hx-trigger="onload" hx-swap="outerHTML">
-		<span>processed { strconv.Itoa(count.LinksHavePages) }</span>
-		<span>(out of { strconv.Itoa(count.TotalLinks) })</span>
+		<span>Got content for { strconv.Itoa(count.LinksHavePages) } pages </span>
+		<span>out of { strconv.Itoa(count.TotalLinks) } pages seen</span>
 	</div>
 }
 
