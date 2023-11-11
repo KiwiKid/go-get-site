@@ -54,6 +54,7 @@ type Website struct {
 	CustomQueryParam         string    `gorm:"size:1024"`
 	BaseUrl                  string    `gorm:"size:1024"`
 	StartUrl                 string    `gorm:"size:1024"`
+	PreLoadPageClickSelector string    `gorm:"size:512"`
 	RemoveAnchorTags         bool      `gorm:"type:boolean;default:true"`
 	DateCreated              time.Time `gorm:"type:timestamp"`
 	LoginName                string    `gorm:"size:512"`
@@ -101,6 +102,10 @@ func (w *Website) getProcessURL() string {
 
 func (w *Website) websiteURLWithPostFix(postfix string) string {
 	return fmt.Sprintf("/site/%d/%s", w.ID, postfix)
+}
+
+func (w *Website) websiteURLWithPagesId(pageId uint) string {
+	return fmt.Sprintf("/site/%d/page/%d", w.ID, pageId)
 }
 
 func (w *Website) websitePagesURL() string {
@@ -156,9 +161,13 @@ func NewDB() (*DB, error) {
 
 func (db *DB) Migrate() {
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
+	log.Print("Migrate Start - Page")
 	db.conn.AutoMigrate(&Page{})
+	log.Print("Migrate Start - Website")
 	db.conn.AutoMigrate(&Website{})
+	log.Print("Migrate Start - Chat")
 	db.conn.AutoMigrate(&Chat{})
+	log.Print("Migrate Start - Index")
 
 	// Check if the index exists
 	var count int64
@@ -171,16 +180,18 @@ func (db *DB) Migrate() {
 	if count == 0 {
 		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url) IF EXISTS")
 	}
+	/*
+			DO $$
 
+		--	BEGIN
+		--		IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
+		--			ALTER TABLE pgml.page DROP COLUMN embedding;
+		--		END IF;
+		--	END $$;
+
+
+	*/
 	err := db.conn.Exec(`
-		DO $$ 
-
-		BEGIN 
-			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
-				ALTER TABLE pgml.page DROP COLUMN embedding;
-			END IF;
-		END $$;
-		
 		-- Add the new generated embedding column if it doesn't exist
 		DO $$ 
 		BEGIN
@@ -201,7 +212,10 @@ func (db *DB) Migrate() {
 		END $$;
 		`).Error
 
+	log.Print("Migrate End - Index")
+
 	if err != nil {
+		log.Print("Migrate End - Index")
 		panic(err)
 	}
 }
@@ -298,6 +312,25 @@ func (db *DB) UpdateWarning(pageID uint, warning string) error {
 	// Check if any rows were updated
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("No page found with ID %d to update warning", pageID)
+	}
+
+	return nil
+}
+
+func (db *DB) ResetPage(pageID uint) error {
+	// Fetch the page by ID
+	var page Page
+	// Reset the page fields
+	page.DateUpdated = time.Now()
+	page.DateCreated = time.Now()
+	page.Content = ""                                                           // Assuming you want to clear the content
+	page.DateProcessed = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC) // Reset to zero time if DateProcessed is a time.Time
+	page.Warning = ""
+
+	// Update the page in the database
+	updateResult := db.conn.Save(&page)
+	if updateResult.Error != nil {
+		return updateResult.Error
 	}
 
 	return nil

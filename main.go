@@ -19,6 +19,8 @@ import (
 )
 
 func main() {
+	log.Print("Start")
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -26,11 +28,14 @@ func main() {
 
 	//// Uncomment to deploy DB changes (commentted out as it improves rebuild time)
 	//// (Or comment to improve build speed)
-	//db, err := NewDB()
-	//if err != nil {
-	//	panic(err)
-	//}
-	//db.Migrate()
+
+	// log.Print("Start:NewDB()")
+	// db, err := NewDB()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// log.Print("Start:Migrate()")
+	// db.Migrate()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -43,6 +48,7 @@ func main() {
 	r.Handle("/", presentWebsite()).Methods("GET", "POST")
 	r.HandleFunc("/site/{websiteId}", presentWebsite()).Methods("GET", "POST", "PUT")
 	r.HandleFunc("/site/{websiteId}/{deleteOpt}", presentWebsite()).Methods("DELETE")
+	r.HandleFunc("/site/{websiteId}/{deleteOpt}/{pageId}", presentWebsite()).Methods("DELETE")
 
 	r.HandleFunc("/site/{websiteId}/login", presentLogin(ctx)).Methods("GET")
 
@@ -202,11 +208,21 @@ func presentWebsite() http.HandlerFunc {
 				loginNameSelector := r.FormValue("loginNameSelector")
 				loginPass := r.FormValue("loginPass")
 				loginPassSelector := r.FormValue("loginPassSelector")
+				preLoadPageClickSelector := r.FormValue("preLoadPageClickSelector")
 				startUrl := r.FormValue("startUrl")
 				log.Printf("Form Values - websiteUrl: %s, customQueryParam: %s, loginName: %s, loginNameSelector: %s, loginPass: %s, loginPassSelector: %s",
 					websiteUrl, customQueryParam, loginName, loginNameSelector, loginPass, loginPassSelector)
 
-				site, err := db.InsertWebsite(Website{BaseUrl: websiteUrl, StartUrl: startUrl, CustomQueryParam: customQueryParam, LoginName: loginName, LoginPass: loginPass, LoginNameSelector: loginNameSelector, LoginPassSelector: loginPassSelector})
+				site, err := db.InsertWebsite(Website{
+					BaseUrl:                  websiteUrl,
+					StartUrl:                 startUrl,
+					CustomQueryParam:         customQueryParam,
+					LoginName:                loginName,
+					LoginPass:                loginPass,
+					LoginNameSelector:        loginNameSelector,
+					LoginPassSelector:        loginPassSelector,
+					PreLoadPageClickSelector: preLoadPageClickSelector,
+				})
 				if err != nil {
 					http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
 					log.Fatalf("InsertWebsite  %v", err)
@@ -255,6 +271,8 @@ func presentWebsite() http.HandlerFunc {
 				loginPassSelector := r.FormValue("loginPassSelector")
 				submitButtonSelector := r.FormValue("submitButtonSelector")
 				successIndicatorSelector := r.FormValue("successIndicatorSelector")
+				preLoadPageClickSelector := r.FormValue("preLoadPageClickSelector")
+
 				startUrl := r.FormValue("startUrl")
 
 				site, err := db.UpdateWebsite(Website{
@@ -268,6 +286,7 @@ func presentWebsite() http.HandlerFunc {
 					SubmitButtonSelector:     submitButtonSelector,
 					SuccessIndicatorSelector: successIndicatorSelector,
 					StartUrl:                 startUrl,
+					PreLoadPageClickSelector: preLoadPageClickSelector,
 				})
 				if err != nil {
 					http.Error(w, "UpdateWebsite is failed", http.StatusBadRequest)
@@ -336,6 +355,22 @@ func presentWebsite() http.HandlerFunc {
 
 							return
 						}
+					}
+				case "reset-page":
+					{
+						pageIdStr := vars["pageId"]
+						pageId, err := stringToUint(pageIdStr)
+						if err != nil {
+							http.Error(w, "stringToUint for reset-page pageId is failed", http.StatusBadRequest)
+							return
+						}
+						resetPageErr := db.ResetPage(pageId)
+
+						if resetPageErr != nil {
+							http.Error(w, "ResetPage has failed", http.StatusBadRequest)
+							return
+						}
+
 					}
 				default:
 					{
@@ -421,6 +456,12 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 	db, err := NewDB()
 	dripLoad := false
 	dripLoadCount := 0
+	skipNewLinkInsert := false
+	processAll := false
+	viewPageSize := 300
+	processPageSize := 5
+	dripLoadFreqMin := 5
+
 	if err != nil {
 		panic(err)
 	}
@@ -436,7 +477,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		}
 		website, err := db.GetWebsite(websiteId)
 		if err != nil {
-			http.Error(w, "Failed to GetWebsite", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Failed to GetWebsite %v", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -446,10 +487,13 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			page = 1
 		}
 
-		pageSizeStr := r.URL.Query().Get("pageSize")
-		pageSize, err := strconv.Atoi(pageSizeStr)
-		if err != nil || pageSize <= 0 {
-			pageSize = 100
+		viewPageSizeStr := r.URL.Query().Get("viewPageSize")
+		viewPageSizeInt, err := strconv.Atoi(viewPageSizeStr)
+		if err != nil || viewPageSizeInt <= 0 {
+			log.Printf("no viewPageSize %v", err)
+			viewPageSize = 300
+		} else {
+			viewPageSize = viewPageSizeInt
 		}
 
 		if r.Method == http.MethodPost {
@@ -461,12 +505,22 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 				return
 			}
 
-			processAll := r.FormValue("processAll") == "on"
+			processAll = r.FormValue("processAll") == "on"
 			dripLoad = r.FormValue("dripLoad") == "on"
 
 			if dripLoad {
-				dripLoadCountStr := r.FormValue("dripLoadCount")
 
+				dripLoadFreqMinStr := r.FormValue("dripLoadFreqMin")
+				dripLoadFreqMinInt, err := strconv.Atoi(dripLoadFreqMinStr)
+				if err != nil {
+					log.Printf("Failed dripLoadFreqMinStr %s %v", dripLoadFreqMinStr, err)
+
+					http.Error(w, "Failed dripLoadFreqMinStr", http.StatusInternalServerError)
+					return
+				}
+				dripLoadFreqMin = dripLoadFreqMinInt
+
+				dripLoadCountStr := r.FormValue("dripLoadCount")
 				provideddripLoadCount, err := strconv.Atoi(dripLoadCountStr)
 				if err != nil {
 					log.Printf("Failed provideddripLoadCount %s %v", dripLoadCountStr, err)
@@ -478,14 +532,18 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 
 			}
 
+			skipNewLinkInsert = r.FormValue("skipNewLinkInsert") == "on"
+
 			processPageSizeStr := r.FormValue("processPageSize")
-			pageSize, err := strconv.Atoi(processPageSizeStr)
-			if err != nil || pageSize <= 0 {
-				pageSize = 5
+			processPageSizeInt, err := strconv.Atoi(processPageSizeStr)
+			if err != nil || processPageSizeInt <= 0 {
+				processPageSize = 5
+			} else {
+				processPageSize = processPageSizeInt
 			}
 
 			log.Printf("handlePages - processWebsite processAll:%v", processAll)
-			processErr := processWebsite(ctx, *db, *website, processAll, 1, pageSize, addedPagesSet)
+			processErr := processWebsite(ctx, *db, *website, processAll, 1, processPageSize, addedPagesSet, skipNewLinkInsert)
 			if processErr != nil {
 				http.Error(w, "Failed to processWebsite", http.StatusInternalServerError)
 				return
@@ -499,9 +557,9 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 				panic(err)
 			}*/
 
-		//log.Printf("ListPages %s %d %d", websiteURL, page, pageSize)
+		log.Printf("ListPages %s %d %d", website.BaseUrl, page, viewPageSize)
 
-		pagesList, pageErr := db.ListPages(website.ID, page, pageSize)
+		pagesList, pageErr := db.ListPages(website.ID, page, viewPageSize)
 		if pageErr != nil {
 			panic(pageErr)
 		}
@@ -517,26 +575,27 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			Done:  count.LinksHavePages,
 		}
 
-		thisPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
-		prevPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
+		thisPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
+		prevPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
 
 		var nextPageUrl string
-		if count.TotalLinks > (page * pageSize) {
-			nextPageUrl = fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, pageSize)
+		if count.TotalLinks > (page * viewPageSize) {
+			nextPageUrl = fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
 		} else {
 			nextPageUrl = ""
 		}
 
-		percentage := fmt.Sprintf("%f", (float64(prog.Done) / float64(prog.Total) * 100.0))
-		log.Printf("dripLoad %v dripLoadCount %d", dripLoad, dripLoadCount)
+		percentage := fmt.Sprintf("%.0f", (float64(prog.Done) / float64(prog.Total) * 100.0))
+		dripLoadStr := fmt.Sprintf("every %dm", dripLoadFreqMin)
+		log.Printf("pagesList length: %d dripLoad %v dripLoadCount %d", len(pagesList), dripLoad, dripLoadCount)
 
-		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet, percentage, dripLoad, dripLoadCount)
+		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet, percentage, viewPageSize, processPageSize, dripLoad, dripLoadCount, dripLoadFreqMin, dripLoadStr, processAll, skipNewLinkInsert)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
 }
 
-func processWebsite(ctx context.Context, db DB, website Website, processAll bool, page int, pageSize int, addedPagesSet map[string]struct{}) error {
+func processWebsite(ctx context.Context, db DB, website Website, processAll bool, page int, pageSize int, addedPagesSet map[string]struct{}, skipNewLinkInsert bool) error {
 	log.Print("StartProcessingSite ", website.BaseUrl)
 	var pageProcessedAfter time.Time
 	if processAll {
@@ -557,7 +616,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 	}
 
 	if len(pagesToProcess) > 0 {
-		pagesToSave, err := fetchContentFromPages(ctx, website, pagesToProcess, 5, addedPagesSet)
+		pagesToSave, err := fetchContentFromPages(ctx, website, pagesToProcess, pageSize, addedPagesSet, skipNewLinkInsert)
 		if err != nil {
 			panic(err)
 		}
@@ -620,7 +679,7 @@ func getLoginTasks(website Website) []chromedp.Action {
 		tasks = append(tasks,
 			logAction("getLoginTasks:Navigate-to-start-url:start", url, false),
 			chromedp.Navigate(url),
-			logAction("getLoginTasks:Navigate-to-start-url:success:", url, false),
+			logAction("getLoginTasks:Navigate-to-start-url:success. Looking for successindicator:", website.SuccessIndicatorSelector, true),
 			chromedp.WaitVisible(website.SuccessIndicatorSelector),
 			logAction("getLoginTasks:Navigate-to-start-url:SUCCESS", "", false),
 		)
@@ -652,11 +711,17 @@ func getLoginTasks(website Website) []chromedp.Action {
 		)
 	}
 
+	if website.RequestCookieName != "" && website.RequestCookieValue != "" {
+		log.Printf("fetchContentFromPages Setting Cookies")
+
+		tasks = append(tasks, SetCookie(website.RequestCookieName, website.RequestCookieValue, website.BaseUrl, "/", false, false))
+	}
+
 	return tasks
 
 }
 
-func fetchContentFromPages(ctx context.Context, website Website, pages []Page, remainingToProcess int, addedPagesSet map[string]struct{}) ([]Page, error) {
+func fetchContentFromPages(ctx context.Context, website Website, pages []Page, remainingToProcess int, addedPagesSet map[string]struct{}, skipNewLinkInsert bool) ([]Page, error) {
 	log.Print("fetchContentFromPages:start")
 
 	var newPages []Page
@@ -670,19 +735,13 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 
 	tasks := getLoginTasks(website)
 
-	if website.RequestCookieName != "" && website.RequestCookieValue != "" {
-		log.Printf("fetchContentFromPages Setting Cookies")
-
-		tasks = append(tasks, SetCookie(website.RequestCookieName, website.RequestCookieValue, website.BaseUrl, "/", false, false))
-	}
-
 	for _, page := range pages {
 
 		var title string
 		var content string
 		var links []string
 
-		log.Printf("fetchContentFromPages Starting Page %s", page.URL)
+		log.Printf("fetchContentFromPages Starting Page \n%s \n %s", page.URL, website.StartUrl)
 
 		// Add the rest of the tasks
 		tasks = append(tasks,
@@ -693,12 +752,35 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			chromedp.Navigate(page.URL),
 			logAction("fetchContentFromPages:Navigate-to:Success", page.URL, false),
 			chromedp.WaitVisible(website.SuccessIndicatorSelector),
+		)
+
+		if website.PreLoadPageClickSelector != "" && website.PreLoadPageClickSelector != "NA" {
+			tasks = append(tasks,
+				logAction("fetchContentFromPages:PreLoadPageClickSelector:start:", website.PreLoadPageClickSelector, true),
+				chromedp.ActionFunc(func(ctx context.Context) error {
+					// Create a context with a timeout
+					clickCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					defer cancel()
+
+					// Attempt to click. If the element is not found within the timeout, an error will be returned.
+					err := chromedp.Click(website.PreLoadPageClickSelector, chromedp.NodeVisible).Do(clickCtx)
+					if err != nil {
+						// Log the error and return nil to continue with the next actions
+						log.Printf("Optional click failed or timed out: %v", err)
+						return nil
+					}
+					// If click was successful, wait for 5 seconds
+					return chromedp.Sleep(5 * time.Second).Do(ctx)
+				}),
+				logAction("fetchContentFromPages:PreLoadPageClickSelector:end", page.URL, false),
+			)
+		}
+		tasks = append(tasks,
 			logAction("fetchContentFromPages:Navigate-to", "", false),
 			chromedp.Sleep(2),
 			chromedp.Evaluate(`document.title`, &title),
-			chromedp.Evaluate(`document.body.innerText`, &content),
+			chromedp.Evaluate(`document.body.textContent`, &content),
 			logAction(fmt.Sprintf("fetchContentFromPages:Got Title (%d) and Content (%d)", len(title), len(content)), page.URL, false),
-			chromedp.Evaluate(`document.body.innerText`, &content),
 			logAction("fetchContentFromPages:GetLinks", page.URL, false),
 			chromedp.Evaluate(allLinksJS, &links),
 			logAction("fetchContentFromPages:GotLinks", page.URL, false),
@@ -717,7 +799,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			if setWarErr != nil {
 				panic(setWarErr)
 			}
-			panic(err)
+			// panic(err)
 			// return newPages, err
 		}
 
@@ -734,36 +816,38 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 		newPages = append(newPages, newPage)
 		emptyLink := []string{}
 
-		for _, link := range links {
-			for _, baseUrl := range strings.Split(website.BaseUrl, ",") {
-				link, err = stripAnchors(link)
-				if err != nil {
-					log.Printf("fetchContentFromPages non-page link %s", link)
-					panic(err)
-				}
-				if linkCouldBePage(link, baseUrl) {
-
-					if _, exists := addedPagesSet[GetPageDoneCacheKey(newPage.WebsiteId, link)]; !exists {
-
-						log.Printf("fetchContentFromPages page link %s", link)
-
-						newEmptyPage := Page{
-
-							URL:       link,
-							WebsiteId: website.ID,
-							Links:     emptyLink,
-						}
-						newPages = append(newPages, newEmptyPage)
-						addedPagesSet[GetPageDoneCacheKey(newPage.WebsiteId, link)] = struct{}{}
-						// You might want to add this newPage to some slice or process it further
-						break
-					} else {
-						log.Printf("fetchContentFromPages already added %s", link)
+		if !skipNewLinkInsert {
+			for _, link := range links {
+				for _, baseUrl := range strings.Split(website.BaseUrl, ",") {
+					link, err = stripAnchors(link)
+					if err != nil {
+						log.Printf("fetchContentFromPages non-page link %s", link)
+						panic(err)
 					}
-				} else {
-					log.Printf("fetchContentFromPages not a relvant link %s", link)
-				}
+					if linkCouldBePage(link, baseUrl) {
 
+						if _, exists := addedPagesSet[GetPageDoneCacheKey(newPage.WebsiteId, link)]; !exists {
+
+							log.Printf("fetchContentFromPages page link %s", link)
+
+							newEmptyPage := Page{
+
+								URL:       link,
+								WebsiteId: website.ID,
+								Links:     emptyLink,
+							}
+							newPages = append(newPages, newEmptyPage)
+							addedPagesSet[GetPageDoneCacheKey(newPage.WebsiteId, link)] = struct{}{}
+							// You might want to add this newPage to some slice or process it further
+							break
+						} else {
+							log.Printf("fetchContentFromPages already added %s", link)
+						}
+					} else {
+						log.Printf("fetchContentFromPages not a relvant link %s", link)
+					}
+
+				}
 			}
 		}
 		if len(newPages) > remainingToProcess {

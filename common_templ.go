@@ -53,7 +53,7 @@ func progressBar(progress string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(templ.EscapeString(string(progress)))
+		_, err = templBuffer.WriteString(templ.EscapeString(progress))
 		if err != nil {
 			return err
 		}

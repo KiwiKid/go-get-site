@@ -68,15 +68,34 @@ func header(header string) templ.Component {
 			return err
 		}
 		var_7 := `
-		document.addEventListener("DOMContentLoaded", function() {
-			const progressElements = document.querySelectorAll("[data-progress]");
+				document.addEventListener("DOMContentLoaded", function() {
+					const progressElements = document.querySelectorAll("[data-progress]");
 
-			progressElements.forEach(function(element) {
-				const progressValue = element.getAttribute("data-progress");
-				element.style.width = ` + "`" + `${progressValue}%` + "`" + `;
-				console.log("SET progressElements"+progressValue)
-			});
-		});
+					// Function to update element style
+					const updateProgress = (element) => {
+						const progressValue = element.getAttribute("data-progress");
+						element.style.width = ` + "`" + `${progressValue}%` + "`" + `;
+						console.log("Updated progress to " + progressValue);
+					};
+
+					// Initialize the observer
+					const observer = new MutationObserver((mutations) => {
+						mutations.forEach((mutation) => {
+							if (mutation.type === "attributes" && mutation.attributeName === "data-progress") {
+								updateProgress(mutation.target);
+							}
+						});
+					});
+
+					// Observer configuration
+					const config = { attributes: true, childList: false, subtree: false };
+
+					// Apply observer and initial styling
+					progressElements.forEach((element) => {
+						updateProgress(element); // Set initial width
+						observer.observe(element, config); // Start observing for changes
+					});
+				});
 
 		`
 		_, err = templBuffer.WriteString(var_7)
