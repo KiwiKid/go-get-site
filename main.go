@@ -197,21 +197,28 @@ func presentWebsite() http.HandlerFunc {
 					http.Error(w, "websiteUrl is required", http.StatusBadRequest)
 					return
 				}
-				customQueryParams := r.FormValue("customQueryParams")
+				customQueryParam := r.FormValue("customQueryParam")
 				loginName := r.FormValue("loginName")
 				loginNameSelector := r.FormValue("loginNameSelector")
 				loginPass := r.FormValue("loginPass")
 				loginPassSelector := r.FormValue("loginPassSelector")
-				site, err := db.InsertWebsite(Website{BaseUrl: websiteUrl, CustomQueryParam: customQueryParams, LoginName: loginName, LoginPass: loginPass, LoginNameSelector: loginNameSelector, LoginPassSelector: loginPassSelector})
+				startUrl := r.FormValue("startUrl")
+				log.Printf("Form Values - websiteUrl: %s, customQueryParam: %s, loginName: %s, loginNameSelector: %s, loginPass: %s, loginPassSelector: %s",
+					websiteUrl, customQueryParam, loginName, loginNameSelector, loginPass, loginPassSelector)
+
+				site, err := db.InsertWebsite(Website{BaseUrl: websiteUrl, StartUrl: startUrl, CustomQueryParam: customQueryParam, LoginName: loginName, LoginPass: loginPass, LoginNameSelector: loginNameSelector, LoginPassSelector: loginPassSelector})
 				if err != nil {
 					http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
+					log.Fatalf("InsertWebsite  %v", err)
+
 					return
 				}
 				emptyLink := []string{}
 				inserPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID, Links: emptyLink})
 				if inserPageErr != nil {
-					log.Fatalf("inserPageErr  %v", inserPageErr)
-					http.Error(w, "UpsertPage is failed", http.StatusBadRequest)
+					http.Error(w, "InsertPage has failed", http.StatusBadRequest)
+					log.Fatalf("InsertPage has failed  %v", inserPageErr)
+
 					panic(inserPageErr)
 				}
 
@@ -241,24 +248,26 @@ func presentWebsite() http.HandlerFunc {
 					http.Error(w, "websiteUrl is required", http.StatusBadRequest)
 					return
 				}
-				customQueryParams := r.FormValue("customQueryParams")
+				customQueryParam := r.FormValue("customQueryParam")
 				loginName := r.FormValue("loginName")
 				loginNameSelector := r.FormValue("loginNameSelector")
 				loginPass := r.FormValue("loginPass")
 				loginPassSelector := r.FormValue("loginPassSelector")
 				submitButtonSelector := r.FormValue("submitButtonSelector")
 				successIndicatorSelector := r.FormValue("successIndicatorSelector")
+				startUrl := r.FormValue("startUrl")
 
 				site, err := db.UpdateWebsite(Website{
 					ID:                       websiteId,
 					BaseUrl:                  websiteUrl,
-					CustomQueryParam:         customQueryParams,
+					CustomQueryParam:         customQueryParam,
 					LoginName:                loginName,
 					LoginPass:                loginPass,
 					LoginNameSelector:        loginNameSelector,
 					LoginPassSelector:        loginPassSelector,
 					SubmitButtonSelector:     submitButtonSelector,
 					SuccessIndicatorSelector: successIndicatorSelector,
+					StartUrl:                 startUrl,
 				})
 				if err != nil {
 					http.Error(w, "UpdateWebsite is failed", http.StatusBadRequest)
@@ -307,8 +316,16 @@ func presentWebsite() http.HandlerFunc {
 							return
 						}
 						emptyLink := []string{}
+
+						var url string
+						if len(website.StartUrl) > 0 {
+							url = website.StartUrl
+						} else {
+							url = website.BaseUrl
+						}
+
 						newEmptyPage := Page{
-							URL:       website.BaseUrl,
+							URL:       url,
 							WebsiteId: website.ID,
 							Links:     emptyLink,
 						}
@@ -402,6 +419,8 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 	log.Print("handlePages")
 	addedPagesSet := make(map[string]struct{})
 	db, err := NewDB()
+	dripLoad := false
+	dripLoadCount := 0
 	if err != nil {
 		panic(err)
 	}
@@ -437,11 +456,28 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			log.Print("handlePages - POST")
 			db, err := NewDB()
 			if err != nil {
+				log.Printf("Failed to connect to the database %v", err)
 				http.Error(w, "Failed to connect to the database", http.StatusInternalServerError)
 				return
 			}
 
 			processAll := r.FormValue("processAll") == "on"
+			dripLoad = r.FormValue("dripLoad") == "on"
+
+			if dripLoad {
+				dripLoadCountStr := r.FormValue("dripLoadCount")
+
+				provideddripLoadCount, err := strconv.Atoi(dripLoadCountStr)
+				if err != nil {
+					log.Printf("Failed provideddripLoadCount %s %v", dripLoadCountStr, err)
+
+					http.Error(w, "Failed provideddripLoadCount", http.StatusInternalServerError)
+					return
+				}
+				dripLoadCount = provideddripLoadCount + 1
+
+			}
+
 			processPageSizeStr := r.FormValue("processPageSize")
 			pageSize, err := strconv.Atoi(processPageSizeStr)
 			if err != nil || pageSize <= 0 {
@@ -492,9 +528,9 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		}
 
 		percentage := fmt.Sprintf("%f", (float64(prog.Done) / float64(prog.Total) * 100.0))
-		log.Printf("percentage percentage percentage %s", percentage)
+		log.Printf("dripLoad %v dripLoadCount %d", dripLoad, dripLoadCount)
 
-		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet, percentage)
+		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet, percentage, dripLoad, dripLoadCount)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
@@ -582,33 +618,37 @@ func getLoginTasks(website Website) []chromedp.Action {
 	if url != "" {
 
 		tasks = append(tasks,
-			logAction("Navigate-to:start", url, false),
+			logAction("getLoginTasks:Navigate-to-start-url:start", url, false),
 			chromedp.Navigate(url),
-			logAction("Navigate-to-success:", url, false),
+			logAction("getLoginTasks:Navigate-to-start-url:success:", url, false),
+			chromedp.WaitVisible(website.SuccessIndicatorSelector),
+			logAction("getLoginTasks:Navigate-to-start-url:SUCCESS", "", false),
 		)
 	} else {
-		log.Print("fetchContentFromPagesERROR-  no urlWithParams")
+		log.Print("getLoginTasks:fetchContentFromPagesERROR-  no urlWithParams")
 	}
 
-	if website.LoginName != "" {
+	shouldLogin := website.LoginName != "" && website.LoginName != "dont-login"
+
+	if shouldLogin {
 
 		log.Printf("fetchContentFromPages Logging-in as '%s'", website.LoginName)
 
 		tasks = append(tasks,
-			logAction("LoginStart-looking-for:", website.LoginNameSelector, true),
+			logAction("getLoginTasks:LoginStart-looking-for:", website.LoginNameSelector, true),
 			chromedp.WaitVisible(website.LoginNameSelector),
-			logAction("LoginStart-LoginNameSelector-SUCCESS", website.LoginNameSelector, true),
+			logAction("getLoginTasks:LoginStart-LoginNameSelector-SUCCESS", website.LoginNameSelector, true),
 			chromedp.SendKeys(website.LoginNameSelector, website.LoginName),
-			logAction("LoginStart-LoginNameSelector-Entry-SUCCESS:", website.LoginNameSelector, true),
+			logAction("getLoginTasks:LoginStart-LoginNameSelector-Entry-SUCCESS:", website.LoginNameSelector, true),
 			chromedp.SendKeys(website.LoginPassSelector, website.LoginPass),
-			logAction("LoginStart-LoginPassSelector-Entry-SUCCESS:", website.LoginPassSelector, true),
-			logAction("LoginStart-looking-for SubmitButtonSelector: ", website.SubmitButtonSelector, true),
+			logAction("getLoginTasks:LoginStart-LoginPassSelector-Entry-SUCCESS:", website.LoginPassSelector, true),
+			logAction("getLoginTasks:LoginStart-looking-for SubmitButtonSelector: ", website.SubmitButtonSelector, true),
 			chromedp.WaitVisible(website.SubmitButtonSelector),
-			logAction("LoginStart-SubmitButtonSelector-found: ", website.SubmitButtonSelector, true),
+			logAction("getLoginTasks:LoginStart-SubmitButtonSelector-found: ", website.SubmitButtonSelector, true),
 			chromedp.Click(website.SubmitButtonSelector),
-			logAction("LoginStart:SubmitButtonSelector-clicked. Correct Login & Pass? Looking for SuccessIndicatorSelector: ", website.SuccessIndicatorSelector, true),
+			logAction("getLoginTasks:LoginStart:SubmitButtonSelector-clicked. Correct Login & Pass? Looking for SuccessIndicatorSelector: ", website.SuccessIndicatorSelector, true),
 			chromedp.WaitVisible(website.SuccessIndicatorSelector),
-			logAction("LoginStart:SUCCESS", "", false),
+			logAction("getLoginTasks:LoginStart:SUCCESS", "", false),
 		)
 	}
 
@@ -646,9 +686,15 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 
 		// Add the rest of the tasks
 		tasks = append(tasks,
+			//	logAction("fetchContentFromPages: Got past auth? Looking for SuccessIndicatorSelector: ", website.SuccessIndicatorSelector, true),
+			//	chromedp.WaitVisible(website.SuccessIndicatorSelector),
+			logAction("fetchContentFromPages:SUCCESS", "", false),
 			logAction("fetchContentFromPages:Navigate-to:", page.URL, false),
 			chromedp.Navigate(page.URL),
 			logAction("fetchContentFromPages:Navigate-to:Success", page.URL, false),
+			chromedp.WaitVisible(website.SuccessIndicatorSelector),
+			logAction("fetchContentFromPages:Navigate-to", "", false),
+			chromedp.Sleep(2),
 			chromedp.Evaluate(`document.title`, &title),
 			chromedp.Evaluate(`document.body.innerText`, &content),
 			logAction(fmt.Sprintf("fetchContentFromPages:Got Title (%d) and Content (%d)", len(title), len(content)), page.URL, false),

@@ -2,7 +2,7 @@ package main
 
 import "strconv"
 
-templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string) {
+templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, dripLoad bool, dripLoadCount int) {
 	<html>
 		@header(website.BaseUrl)
 		<body class="bg-gray-100" id="container">
@@ -23,7 +23,17 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 				} else {
 					<div>No pages added, click "Load more website content" to get started</div>
 				}
-				<form hx-post={ website.websitePagesURL() } hx-target="#container" class="space-y-4">
+				if dripLoad {
+					<h1 class="bg-green-700 w-full px-3 py-2">Drip Load Mode (Run every 15 minutes - run #<span>{ strconv.Itoa(dripLoadCount)  }</span>)</h1>
+				}
+				<form
+ 					hx-post={ website.websitePagesURL() }
+ 					hx-target="#container"
+ 					class="space-y-4"
+ 					if dripLoad {
+						hx-trigger="every 15m"
+					}
+				>
 					<div id="loading-page-processing" style="display:none">Loading...</div>
 					@progressBar(progress)
 					<button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Load more website content</button>
@@ -32,11 +42,25 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 						<label for="processAll" class="text-gray-700">Ignore Status/Existing Content</label>
 					</div>
 					<div class="flex items-center space-x-2">
+						<input
+ 							type="checkbox"
+ 							name="dripLoad"
+ 							id="dripLoad"
+ 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 							if dripLoad {
+								checked="checked"
+							}
+						/>
+						<label for="dripLoad" class="text-gray-700">Drip Load</label>
+						So Far:
+						<input type="number" name="dripLoadCount" value={ strconv.Itoa(dripLoadCount) }/>
+					</div>
+					<div class="flex items-center space-x-2">
 						<label for="processPageSize" class="text-gray-700">Process Page Cutoff:</label>
 						<select id="processPageSize" name="processPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200">
 							<option value="1">1 new page</option>
-							<option value="5" selected="selected">5 new pages</option>
-							<option value="10">10 new pages</option>
+							<option value="5">5 new pages</option>
+							<option value="10"  selected="selected">10 new pages</option>
 							<option value="25">25 new pages</option>
 							<option value="50">50 new pages</option>
 							<option value="100">100 new pages</option>
@@ -53,6 +77,9 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
 						<div class="w-1/3 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{ item.URL }</a></div>
 						<div class="w-1/4 p-2">
+							if len(item.Warning) > 0 {
+								<div class="bg-red-400 p-4 w-full"><details><summary>Error</summary>{ item.Warning }</details></div>
+							}
 							<details>
 								if item.ToProcess() {
 									<summary>TO_PROCESS</summary>

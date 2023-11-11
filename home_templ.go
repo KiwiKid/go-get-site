@@ -38,7 +38,7 @@ func home(websites []Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<main class=\"flex justify-center mt-6\"><div class=\"w-full max-w-2xl bg-white shadow rounded-lg p-6\">")
+		_, err = templBuffer.WriteString("<main class=\"flex justify-center mt-6\"><div class=\"w-full bg-white shadow rounded-lg p-6\">")
 		if err != nil {
 			return err
 		}

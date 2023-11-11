@@ -3,8 +3,7 @@
 # Assuming you are executing the script from the root directory of the project
 templ generate
 mkdir -p app
-go build -o app/go-get-site local/go-get-site
-./app/go-get-site
+go build -o app/go-get-site && ./app/go-get-site
 ```
 
 

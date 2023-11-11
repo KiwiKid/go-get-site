@@ -108,7 +108,11 @@ func (w *Website) websitePagesURL() string {
 }
 
 func (w *Website) websiteNavigateURL() string {
-	return fmt.Sprintf("%s?%s", w.BaseUrl, w.CustomQueryParam)
+	if len(w.StartUrl) == 0 {
+		return fmt.Sprintf("%s?%s", w.BaseUrl, w.CustomQueryParam)
+	} else {
+		return fmt.Sprintf("%s", w.StartUrl)
+	}
 }
 
 func (w *Website) websiteLoginURL() string {
@@ -365,6 +369,7 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 
 	if !processAll {
 		query = query.Where("LENGTH(content) = 0")
+		query = query.Where("LENGTH(warning) = 0")
 		query = query.Where("date_processed < ?", afterProcessDate)
 	}
 
@@ -526,8 +531,6 @@ func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 		return nil, err
 	}
 
-	log.Print("CountLinksAndPages")
-
 	// Count links that have pages for the URL
 	var linksWithPages int64
 	if err := db.conn.Table("pgml.page").
@@ -535,6 +538,8 @@ func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 		Count(&linksWithPages).Error; err != nil {
 		return nil, err
 	}
+
+	log.Printf("CountLinksAndPages %d %d", totalLinks, linksWithPages)
 
 	return &LinkCountResult{
 		TotalLinks:     int(totalLinks),

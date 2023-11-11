@@ -26,12 +26,12 @@ func websiteList(websites []Website) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div><ul>")
+		_, err = templBuffer.WriteString("<div><ul class=\"grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4\">")
 		if err != nil {
 			return err
 		}
 		for _, webUrl := range websites {
-			_, err = templBuffer.WriteString("<li class=\"mb-2\"><div><a class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\" href=\"")
+			_, err = templBuffer.WriteString("<li class=\"mb-2\"><div class=\"flex flex-col bg-gray-100 rounded-lg shadow hover:shadow-md transition-shadow\"><a class=\"bg-blue-500 text-white py-2 px-4 rounded-t-lg hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300 block\" href=\"")
 			if err != nil {
 				return err
 			}
@@ -49,15 +49,15 @@ func websiteList(websites []Website) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</a>")
+			_, err = templBuffer.WriteString("</a><div class=\"p-2\">")
 			if err != nil {
 				return err
 			}
-			err = websiteDelete(webUrl).Render(ctx, templBuffer)
+			err = editWebsite(webUrl).Render(ctx, templBuffer)
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</div></li>")
+			_, err = templBuffer.WriteString("</div></div></li>")
 			if err != nil {
 				return err
 			}
@@ -142,12 +142,126 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</summary><div class=\"space-y-4\"><div class=\"flex space-x-4\"><div class=\"w-1/2\"><label for=\"loginName\" class=\"block text-sm font-medium text-gray-600\">")
+		_, err = templBuffer.WriteString("</summary><div class=\"space-y-4\"><div class=\"flex space-x-4\"><div class=\"w-1/2\"><label for=\"customQueryParam\" class=\"block text-sm font-medium text-gray-600\">")
 		if err != nil {
 			return err
 		}
-		var_9 := `loginName:`
+		var_9 := `customQueryParam:`
 		_, err = templBuffer.WriteString(var_9)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"customQueryParam\" name=\"customQueryParam\" placeholder=\"auth=DontWorryAboutIt\" value=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(website.CustomQueryParam))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div><div class=\"w-1/2\" title=\"the successIndicatorSelector is checked for existance before the content of the page is read to avoid saving loading states\"><label for=\"successIndicatorSelector\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_10 := `SuccessIndicatorSelector:`
+		_, err = templBuffer.WriteString(var_10)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"successIndicatorSelector\" name=\"successIndicatorSelector\" value=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(website.SuccessIndicatorSelector))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div><div class=\"w-1/2\" title=\"the (optiona ) can trigger a visit to this url as an entrypoint for the site\"><label for=\"startUrl\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_11 := `Auth Url:`
+		_, err = templBuffer.WriteString(var_11)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"startUrl\" name=\"startUrl\" value=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(website.StartUrl))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" pattern=\"^https?://.*\" placeholder=\"https://example.com?pre-authed-link=true\" class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div></div><br><h3>")
+		if err != nil {
+			return err
+		}
+		var_12 := `OR / AND`
+		_, err = templBuffer.WriteString(var_12)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</h3><div class=\"flex space-x-4\">")
+		if err != nil {
+			return err
+		}
+		if website.LoginName == "dont-login" {
+			_, err = templBuffer.WriteString("<h2>")
+			if err != nil {
+				return err
+			}
+			var_13 := `(No login steps)`
+			_, err = templBuffer.WriteString(var_13)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</h2>")
+			if err != nil {
+				return err
+			}
+		} else {
+			if website.LoginName != "" {
+				_, err = templBuffer.WriteString("<h2>")
+				if err != nil {
+					return err
+				}
+				var_14 := `Loggin in with `
+				_, err = templBuffer.WriteString(var_14)
+				if err != nil {
+					return err
+				}
+				var var_15 string = website.LoginName
+				_, err = templBuffer.WriteString(templ.EscapeString(var_15))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</h2>")
+				if err != nil {
+					return err
+				}
+			} else {
+				_, err = templBuffer.WriteString("<h2>")
+				if err != nil {
+					return err
+				}
+				var_16 := `(No login steps)`
+				_, err = templBuffer.WriteString(var_16)
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</h2>")
+				if err != nil {
+					return err
+				}
+			}
+		}
+		_, err = templBuffer.WriteString("<div class=\"w-1/2\"><label for=\"loginName\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_17 := `loginName:`
+		_, err = templBuffer.WriteString(var_17)
 		if err != nil {
 			return err
 		}
@@ -163,8 +277,8 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_10 := `loginPass:`
-		_, err = templBuffer.WriteString(var_10)
+		var_18 := `loginPass:`
+		_, err = templBuffer.WriteString(var_18)
 		if err != nil {
 			return err
 		}
@@ -180,8 +294,8 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_11 := `loginNameSelector:`
-		_, err = templBuffer.WriteString(var_11)
+		var_19 := `loginNameSelector:`
+		_, err = templBuffer.WriteString(var_19)
 		if err != nil {
 			return err
 		}
@@ -197,8 +311,8 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_12 := `loginPassSelector:`
-		_, err = templBuffer.WriteString(var_12)
+		var_20 := `loginPassSelector:`
+		_, err = templBuffer.WriteString(var_20)
 		if err != nil {
 			return err
 		}
@@ -214,8 +328,8 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_13 := `SubmitButtonSelector:`
-		_, err = templBuffer.WriteString(var_13)
+		var_21 := `SubmitButtonSelector:`
+		_, err = templBuffer.WriteString(var_21)
 		if err != nil {
 			return err
 		}
@@ -227,28 +341,15 @@ func editWebsite(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("\" title=\"a CSS selector for the submit button\" class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><label for=\"successIndicatorSelector\" class=\"block text-sm font-medium text-gray-600\">")
-		if err != nil {
-			return err
-		}
-		var_14 := `SuccessIndicatorSelector:`
-		_, err = templBuffer.WriteString(var_14)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"successIndicatorSelector\" name=\"successIndicatorSelector\" value=\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(templ.EscapeString(website.SuccessIndicatorSelector))
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("\" class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div></details><div class=\"mt-6\"><input type=\"submit\" value=\"Update website\" class=\"w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div>")
+		_, err = templBuffer.WriteString("\" title=\"a CSS selector for the submit button\" class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div></details><div class=\"mt-6\"><input type=\"submit\" value=\"Update website\" class=\"w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></div>")
 		if err != nil {
 			return err
 		}
 		err = login(website).Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		err = websiteDelete(website).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -271,17 +372,17 @@ func newWebsite() templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_15 := templ.GetChildren(ctx)
-		if var_15 == nil {
-			var_15 = templ.NopComponent
+		var_22 := templ.GetChildren(ctx)
+		if var_22 == nil {
+			var_22 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div><div class=\"mt-8\"><div class=\"text-gray-700 font-bold mb-4\">")
 		if err != nil {
 			return err
 		}
-		var_16 := `A new site url:`
-		_, err = templBuffer.WriteString(var_16)
+		var_23 := `A new site url:`
+		_, err = templBuffer.WriteString(var_23)
 		if err != nil {
 			return err
 		}
@@ -289,12 +390,30 @@ func newWebsite() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_17 := `Website Url:`
-		_, err = templBuffer.WriteString(var_17)
+		var_24 := `Website Url:`
+		_, err = templBuffer.WriteString(var_24)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"websiteUrl\" name=\"websiteUrl\" pattern=\"^https?://.*\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div>")
+		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"websiteUrl\" name=\"websiteUrl\" pattern=\"^https?://.*\" required class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><label for=\"startUrl\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_25 := `Start Url:`
+		_, err = templBuffer.WriteString(var_25)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"url\" id=\"startUrl\" name=\"startUrl\" pattern=\"^https?://.*\" class=\"p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><label for=\"successIndicatorSelector\" class=\"block text-sm font-medium text-gray-600\">")
+		if err != nil {
+			return err
+		}
+		var_26 := `SuccessIndicatorSelector:`
+		_, err = templBuffer.WriteString(var_26)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><input type=\"text\" id=\"successIndicatorSelector\" default=\"body\" name=\"successIndicatorSelector\" required class=\"w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"><input type=\"submit\" value=\"Submit\" class=\"bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300\"></form></div></div>")
 		if err != nil {
 			return err
 		}
@@ -313,17 +432,17 @@ func websiteDelete(website Website) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_18 := templ.GetChildren(ctx)
-		if var_18 == nil {
-			var_18 = templ.NopComponent
+		var_27 := templ.GetChildren(ctx)
+		if var_27 == nil {
+			var_27 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div><details><summary>")
 		if err != nil {
 			return err
 		}
-		var_19 := `delete`
-		_, err = templBuffer.WriteString(var_19)
+		var_28 := `delete`
+		_, err = templBuffer.WriteString(var_28)
 		if err != nil {
 			return err
 		}
@@ -339,8 +458,8 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_20 := `reset pages`
-		_, err = templBuffer.WriteString(var_20)
+		var_29 := `reset pages`
+		_, err = templBuffer.WriteString(var_29)
 		if err != nil {
 			return err
 		}
@@ -356,8 +475,8 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_21 := `DELETE`
-		_, err = templBuffer.WriteString(var_21)
+		var_30 := `DELETE`
+		_, err = templBuffer.WriteString(var_30)
 		if err != nil {
 			return err
 		}
@@ -365,8 +484,8 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_22 := `Loading...`
-		_, err = templBuffer.WriteString(var_22)
+		var_31 := `Loading...`
+		_, err = templBuffer.WriteString(var_31)
 		if err != nil {
 			return err
 		}

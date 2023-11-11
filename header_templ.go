@@ -26,7 +26,7 @@ func header(header string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_2 := `❓ Asker - `
+		var_2 := `❓ Asker -  `
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
@@ -69,7 +69,6 @@ func header(header string) templ.Component {
 		}
 		var_7 := `
 		document.addEventListener("DOMContentLoaded", function() {
-			// Grab all elements with the 'data-progress' attribute
 			const progressElements = document.querySelectorAll("[data-progress]");
 
 			progressElements.forEach(function(element) {

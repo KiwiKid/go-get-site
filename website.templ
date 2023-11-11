@@ -6,12 +6,14 @@ import (
 
 templ websiteList(websites []Website) {
 	<div>
-		<ul>
+		<ul class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 			for _, webUrl := range websites {
 				<li class="mb-2">
-					<div>
-						<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300" href={ templ.URL(webUrl.websitePagesURL()) }>{ webUrl.BaseUrl }</a>
-						@websiteDelete(webUrl)
+					<div class="flex flex-col bg-gray-100 rounded-lg shadow hover:shadow-md transition-shadow">
+						<a class="bg-blue-500 text-white py-2 px-4 rounded-t-lg hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300 block" href={ templ.URL(webUrl.websitePagesURL()) }>{ webUrl.BaseUrl }</a>
+						<div class="p-2">
+							@editWebsite(webUrl)
+						</div>
 					</div>
 				</li>
 			}
@@ -33,6 +35,31 @@ templ editWebsite(website Website) {
 						<div class="space-y-4">
 							<div class="flex space-x-4">
 								<div class="w-1/2">
+									<label for="customQueryParam" class="block text-sm font-medium text-gray-600">customQueryParam:</label>
+									<input type="text" id="customQueryParam" name="customQueryParam" placeholder="auth=DontWorryAboutIt" value={ website.CustomQueryParam  } class="w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+								</div>
+								<div class="w-1/2" title="the successIndicatorSelector is checked for existance before the content of the page is read to avoid saving loading states">
+									<label for="successIndicatorSelector" class="block text-sm font-medium text-gray-600">SuccessIndicatorSelector:</label>
+									<input type="text" id="successIndicatorSelector" name="successIndicatorSelector" value={ website.SuccessIndicatorSelector } class="w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+								</div>
+								<div class="w-1/2" title="the (optiona ) can trigger a visit to this url as an entrypoint for the site">
+									<label for="startUrl" class="block text-sm font-medium text-gray-600">Auth Url:</label>
+									<input type="url" id="startUrl" name="startUrl" value={ website.StartUrl } pattern="^https?://.*" placeholder="https://example.com?pre-authed-link=true" class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+								</div>
+							</div>
+							<br/>
+							<h3>OR / AND</h3>
+							<div class="flex space-x-4">
+								if website.LoginName == "dont-login" {
+									<h2>(No login steps)</h2>
+								} else {
+									if website.LoginName != "" {
+										<h2>Loggin in with { website.LoginName }</h2>
+									} else {
+										<h2>(No login steps)</h2>
+									}
+								}
+								<div class="w-1/2">
 									<label for="loginName" class="block text-sm font-medium text-gray-600">loginName:</label>
 									<input type="text" id="loginName" name="loginName" placeholder="bobby_tables" value={ website.LoginName  } class="w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 								</div>
@@ -53,14 +80,13 @@ templ editWebsite(website Website) {
 							</div>
 							<label for="submitButtonSelector" class="block text-sm font-medium text-gray-600">SubmitButtonSelector:</label>
 							<input type="text" id="submitButtonSelector" name="submitButtonSelector" value={ website.SubmitButtonSelector } title="a CSS selector for the submit button" class="w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
-							<label for="successIndicatorSelector" class="block text-sm font-medium text-gray-600">SuccessIndicatorSelector:</label>
-							<input type="text" id="successIndicatorSelector" name="successIndicatorSelector" value={ website.SuccessIndicatorSelector } class="w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 						</div>
 					</details>
 					<div class="mt-6">
 						<input type="submit" value="Update website" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 					</div>
 					@login(website)
+					@websiteDelete(website)
 				</form>
 			</details>
 		</div>
@@ -74,6 +100,10 @@ templ newWebsite() {
 			<form hx-post="/" hx-swap="outerHTML" hx-target="#container" class="space-y-4">
 				<label for="websiteUrl" class="block text-sm font-medium text-gray-600">Website Url:</label>
 				<input type="url" id="websiteUrl" name="websiteUrl" pattern="^https?://.*" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				<label for="startUrl" class="block text-sm font-medium text-gray-600">Start Url:</label>
+				<input type="url" id="startUrl" name="startUrl" pattern="^https?://.*" class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				<label for="successIndicatorSelector" class="block text-sm font-medium text-gray-600">SuccessIndicatorSelector:</label>
+				<input type="text" id="successIndicatorSelector" default="body" name="successIndicatorSelector" required class="w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 				<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 			</form>
 		</div>
