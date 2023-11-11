@@ -317,6 +317,21 @@ func (db *DB) UpdateWarning(pageID uint, warning string) error {
 	return nil
 }
 
+func (db *DB) ResetWarnings(websiteID uint) error {
+	// Update the Warning field for all pages with the specified website_id
+	result := db.conn.Model(&Page{}).Where("website_id = ?", websiteID).Update("warning", "")
+
+	// Check for an error in the update operation
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Optionally, you can log the number of rows affected
+	log.Printf("Warnings reset for %v pages of website ID %v", result.RowsAffected, websiteID)
+
+	return nil
+}
+
 func (db *DB) ResetPage(pageID uint) error {
 	// Fetch the page by ID
 	var page Page
@@ -403,7 +418,7 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 	if !processAll {
 		query = query.Where("LENGTH(content) = 0")
 		query = query.Where("LENGTH(warning) = 0")
-		query = query.Where("date_processed < ?", afterProcessDate)
+		//	query = query.Where("date_processed < ?", afterProcessDate)
 	}
 
 	var pages []Page

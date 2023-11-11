@@ -458,12 +458,29 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_29 := `delete`
+		var_29 := `Delete & Reset`
 		_, err = templBuffer.WriteString(var_29)
 		if err != nil {
 			return err
 		}
 		_, err = templBuffer.WriteString("</summary><button hx-target=\"#container\" hx-loading=\"#loading\" hx-delete=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(website.websiteURLWithPostFix("warnings-reset")))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" class=\"bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300\">")
+		if err != nil {
+			return err
+		}
+		var_30 := `reset-page-warnings`
+		_, err = templBuffer.WriteString(var_30)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</button><button hx-target=\"#container\" hx-loading=\"#loading\" hx-delete=\"")
 		if err != nil {
 			return err
 		}
@@ -475,8 +492,8 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_30 := `reset pages`
-		_, err = templBuffer.WriteString(var_30)
+		var_31 := `reset pages`
+		_, err = templBuffer.WriteString(var_31)
 		if err != nil {
 			return err
 		}
@@ -492,8 +509,8 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_31 := `DELETE`
-		_, err = templBuffer.WriteString(var_31)
+		var_32 := `DELETE`
+		_, err = templBuffer.WriteString(var_32)
 		if err != nil {
 			return err
 		}
@@ -501,8 +518,8 @@ func websiteDelete(website Website) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_32 := `Loading...`
-		_, err = templBuffer.WriteString(var_32)
+		var_33 := `Loading...`
+		_, err = templBuffer.WriteString(var_33)
 		if err != nil {
 			return err
 		}

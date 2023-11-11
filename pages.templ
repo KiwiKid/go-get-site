@@ -12,21 +12,21 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 				@editWebsite(website)
 				<h1 class="text-4xl font-bold mb-6">PAGES</h1>
 				if dripLoad {
-					<h1 class="bg-green-700 w-full px-3 py-2">Drip Load Mode (Run every 5 minutes - run #<span>{ strconv.Itoa(dripLoadCount)  }</span>)</h1>
+					<h1 class="bg-green-700 w-full px-3 py-2">Drip Load Mode (Run { dripLoadStr } - run #<span>{ strconv.Itoa(dripLoadCount)  }</span>)</h1>
 				}
 				@progressBar(progress)
-					if len(addedPagesSet) > 0 {
-						<details>
-							<summary>{ strconv.Itoa(len(addedPagesSet)) } new pages added - 				<div>@process(count, website)</div></summary>
-							<ul>
-								for link := range addedPagesSet {
-									<li class="bg-green-400">{ link }</li>
-								}
-							</ul>
-						</details>
-					} else {
-						<div>No pages added, click "Load more website content" to get started</div>
-					}
+				if len(addedPagesSet) > 0 {
+					<details>
+						<summary>{ strconv.Itoa(len(addedPagesSet)) } new pages added - 				<div>@process(count, website)</div></summary>
+						<ul>
+							for link := range addedPagesSet {
+								<li class="bg-green-400">{ link }</li>
+							}
+						</ul>
+					</details>
+				} else {
+					<div>No pages added, click "Load more website content" to get started</div>
+				}
 				<form
  					hx-post={ website.websitePagesURL() }
  					hx-target="#container"
@@ -36,13 +36,14 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					}
 				>
 					<div id="loading-page-processing" style="display:none">Loading...</div>
-					
 					<button class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">
-					if dripLoad {
-						[WILL-AUTO-CLICK { dripLoadStr }] Load more now
-					} else {
-						Load more website content
-					}
+						if dripLoad {
+							[WILL-AUTO-CLICK 
+							{ dripLoadStr }
+							] Load more now
+						} else {
+							Load more website content
+						}
 					</button>
 					<div class="flex items-center space-x-2" title="when checked, the existing page status and content will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
 						<input
@@ -66,7 +67,7 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 								checked="checked"
 							}
 						/>
-						<label for="skipNewLinkInsert" class="text-gray-700">Dont look for new pages</label>
+						<label for="skipNewLinkInsert" class="text-gray-700">Just get content for existing pages</label>
 					</div>
 					<div class="flex items-center space-x-2">
 						<label for="dripLoad" class="text-gray-700">Drip Load</label>
@@ -80,7 +81,7 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 							}
 						/>
 						<div class="flex items-center space-x-2" title="How often a set of pages will be loaded">
-							<label for="dripLoadFreqMin" class="text-gray-700">({dripLoadStr})</label>
+							<label for="dripLoadFreqMin" class="text-gray-700">({ dripLoadStr })</label>
 							<input type="number" name="dripLoadFreqMin" value={ strconv.Itoa(dripLoadFreqMin) }/>
 						</div>
 						[Run#:
@@ -126,6 +127,12 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 									selected
 								}
 							>100 new pages</option>
+							<option
+ 								value="1000"
+ 								if processPageSize == 1000 {
+									selected
+								}
+							>1000 new pages</option>
 						</select>
 					</div>
 					<div class="flex items-center space-x-2">
@@ -167,6 +174,12 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 									selected
 								}
 							>300 pages</option>
+							<option
+ 								value="10000"
+ 								if viewPageSize == 10000 {
+									selected
+								}
+							>10000 pages</option>
 						</select>
 					</div>
 				</form>
