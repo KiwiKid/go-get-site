@@ -2,7 +2,7 @@ package main
 
 import "strconv"
 
-templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, viewPageSize int,  processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool) {
+templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, viewPageSize int,  processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool) {
 	<html>
 		@header(website.BaseUrl)
 		<body class="bg-gray-100" id="container">
@@ -30,6 +30,7 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 				<form
  					hx-post={ website.websitePagesURL() }
  					hx-target="#container"
+ 					method="post"
  					class="space-y-4"
  					if dripLoad && dripLoadStr != "dripLoadStr" {
 						hx-trigger={ dripLoadStr }
@@ -38,39 +39,17 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div id="loading-page-processing" style="display:none">Loading...</div>
 					<button class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">
 						if dripLoad {
-							[WILL-AUTO-CLICK 
-							{ dripLoadStr }
-							] Load more now
+							<div class="flex flex-col items-center">
+								<span>[AUTO-CLICK]</span>
+								<span>{ dripLoadStr }</span>
+								<span>(or click this to update settings/load now)</span>
+							</div>
 						} else {
 							Load more website content
 						}
 					</button>
-					<div class="flex items-center space-x-2" title="when checked, the existing page status and content will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
-						<input
- 							type="checkbox"
- 							name="processAll"
- 							id="processAll"
- 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
- 							if processAll {
-								checked="checked"
-							}
-						/>
-						<label for="processAll" class="text-gray-700">Ignore Status/Existing Content</label>
-					</div>
-					<div class="flex items-center space-x-2">
-						<input
- 							type="checkbox"
- 							name="skipNewLinkInsert"
- 							id="skipNewLinkInsert"
- 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
- 							if skipNewLinkInsert {
-								checked="checked"
-							}
-						/>
-						<label for="skipNewLinkInsert" class="text-gray-700">Just get content for existing pages</label>
-					</div>
-					<div class="flex items-center space-x-2">
-						<label for="dripLoad" class="text-gray-700">Drip Load</label>
+					<div class="flex items-center space-x-2" title="when selected, the auto-load will keep pressing the button above">
+						<label for="dripLoad" class="text-gray-700">Auto Load</label>
 						<input
  							type="checkbox"
  							name="dripLoad"
@@ -88,6 +67,44 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 						<input type="number" name="dripLoadCount" value={ strconv.Itoa(dripLoadCount) }/>
 						]
 					</div>
+					<div class="flex items-center space-x-2" title="when checked, the existing page status and content will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
+						<input
+ 							type="checkbox"
+ 							name="processAll"
+ 							id="processAll"
+ 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 							if processAll {
+								checked="checked"
+							}
+						/>
+						<label for="processAll" class="text-gray-700">Ignore Status/Existing Content</label>
+					</div>
+					<div class="flex items-center space-x-2" title="when checked, the existing page errors will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
+						<input
+ 							type="checkbox"
+ 							name="ignoreWarnings"
+ 							id="ignoreWarnings"
+ 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 							if ignoreWarnings {
+								checked="checked"
+							}
+						/>
+						<label for="ignoreWarnings" class="text-gray-700">Ignore Warnings</label>
+					</div>
+					<details><summary>advance</summary>
+					<div class="flex items-center space-x-2">
+						<input
+ 							type="checkbox"
+ 							name="skipNewLinkInsert"
+ 							id="skipNewLinkInsert"
+ 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 							if skipNewLinkInsert {
+								checked="checked"
+							}
+						/>
+						<label for="skipNewLinkInsert" class="text-gray-700">Dont save links</label>
+					</div>
+					</details>
 					<div class="flex items-center space-x-2">
 						<label for="processPageSize" class="text-gray-700">Process Page Cutoff:</label>
 						<select id="processPageSize" name="processPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200">
@@ -193,18 +210,25 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
 						<div class="w-1/4 p-2">
 							if len(item.Warning) > 0 {
-								<div class="bg-red-400 p-4 w-full"><details><summary>Error</summary>{ item.Warning }</details></div>
+								<div class="bg-red-400 p-4 w-full">
+									<details>
+										<summary>Error</summary>
+										{ item.Warning }
+										<button hx-target="#container" hx-loading="#loading" hx-delete={ website.websiteURLWithPostFix("warnings-reset") } class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">Reset Warnings</button>
+									</details>
+								</div>
+							} else {
+								<details>
+									if item.ToProcess() {
+										<summary>TO_PROCESS</summary>
+									} else {
+										<summary>DONE</summary>
+									}
+									{ item.DateCreated.Local().Format(format) }
+									{ item.DateUpdated.Local().Format(format)  }
+									<div>{ item.PageStatus() }</div>
+								</details>
 							}
-							<details>
-								if item.ToProcess() {
-									<summary>TO_PROCESS</summary>
-								} else {
-									<summary>DONE</summary>
-								}
-								{ item.DateCreated.Local().Format(format) }
-								{ item.DateUpdated.Local().Format(format)  }
-								<div>{ item.PageStatus() }</div>
-							</details>
 						</div>
 						<div class="w-1/4 p-2">{ item.Title }</div>
 						<div class="w-1/4 p-2">

@@ -49,6 +49,8 @@ func main() {
 
 	if debugBrowserLogsMode {
 		ctx, cancel = chromedp.NewContext(ctx, chromedp.WithDebugf(log.Printf))
+	} else {
+		ctx, cancel = chromedp.NewContext(ctx)
 	}
 	defer cancel()
 
@@ -63,6 +65,8 @@ func main() {
 
 	r.Handle("/search", presentChat()).Methods("GET", "POST")
 	r.Handle("/search/{threadId}", presentChat()).Methods("GET", "POST")
+
+	r.Handle("/site/{websiteId}/pages/{pageId}/question", presentQuestion()).Methods("GET", "POST")
 
 	r.Handle("/progress", presentLinkCount())
 	r.Use(func(next http.Handler) http.Handler {
@@ -92,6 +96,34 @@ func main() {
 	//	panic(err)
 	//}
 	// processLink(ctx, url, *db)
+}
+
+func presentQuestion() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+		websiteIdStr := vars["websiteId"]
+		websiteId, err := stringToUint(websiteIdStr)
+		if err != nil {
+			http.Error(w, "stringToUint for websiteId is failed", http.StatusBadRequest)
+			return
+		}
+
+		pageIdStr := vars["pageId"]
+		pageId, err := stringToUint(pageIdStr)
+		if err != nil {
+			http.Error(w, "stringToUint for websiteId is failed", http.StatusBadRequest)
+			return
+		}
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+
+		page := db.GetPage(websiteId, pageId)
+
+		// call question openai file
+	}
 }
 
 func presentChat() http.HandlerFunc {
@@ -476,6 +508,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 	dripLoadCount := 0
 	skipNewLinkInsert := false
 	processAll := false
+	ignoreWarnings := false
 	viewPageSize := 300
 	processPageSize := 5
 	dripLoadFreqMin := 5
@@ -552,6 +585,8 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 
 			skipNewLinkInsert = r.FormValue("skipNewLinkInsert") == "on"
 
+			ignoreWarnings = r.FormValue("ignoreWarnings") == "on"
+
 			processPageSizeStr := r.FormValue("processPageSize")
 			processPageSizeInt, err := strconv.Atoi(processPageSizeStr)
 			if err != nil || processPageSizeInt <= 0 {
@@ -561,10 +596,15 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			}
 
 			log.Printf("handlePages - processWebsite processAll:%v", processAll)
-			processErr := processWebsite(ctx, *db, *website, processAll, 1, processPageSize, addedPagesSet, skipNewLinkInsert, uint(dripLoadCount))
+			pagesProcessed, processErr := processWebsite(ctx, *db, *website, processAll, 1, processPageSize, addedPagesSet, skipNewLinkInsert, uint(dripLoadCount), ignoreWarnings)
 			if processErr != nil {
 				http.Error(w, "Failed to processWebsite", http.StatusInternalServerError)
 				return
+			}
+
+			if pagesProcessed == nil && processErr == nil {
+				log.Printf("handlePages:No more pages to process:%v", processAll)
+				dripLoad = false
 			}
 
 			w.WriteHeader(http.StatusCreated) // 201 Created status
@@ -607,13 +647,19 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		dripLoadStr := fmt.Sprintf("every %dm", dripLoadFreqMin)
 		log.Printf("pagesList length: %d dripLoad %v dripLoadCount %d", len(pagesList), dripLoad, dripLoadCount)
 
-		pagesComp := pages(pagesList, *website, *count, thisPageUrl, prevPageUrl, nextPageUrl, addedPagesSet, percentage, viewPageSize, processPageSize, dripLoad, dripLoadCount, dripLoadFreqMin, dripLoadStr, processAll, skipNewLinkInsert)
+		pagesComp := pages(
+			pagesList,
+			*website,
+			*count,
+			thisPageUrl,
+			prevPageUrl,
+			nextPageUrl, addedPagesSet, percentage, viewPageSize, processPageSize, dripLoad, dripLoadCount, dripLoadFreqMin, dripLoadStr, processAll, skipNewLinkInsert, ignoreWarnings)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
 }
 
-func processWebsite(ctx context.Context, db DB, website Website, processAll bool, page int, pageSize int, addedPagesSet map[string]struct{}, skipNewLinkInsert bool, dripLoadCount uint) error {
+func processWebsite(ctx context.Context, db DB, website Website, processAll bool, page int, pageSize int, addedPagesSet map[string]struct{}, skipNewLinkInsert bool, dripLoadCount uint, ignoreWarnings bool) ([]Page, error) {
 	log.Print("StartProcessingSite ", website.BaseUrl)
 	var pageProcessedAfter time.Time
 	if processAll {
@@ -622,7 +668,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 		pageProcessedAfter = time.Now().Add(-7 * 24 * time.Hour)
 	}
 
-	pagesToProcess, err := db.GetPages(website.ID, page, 1000, processAll, pageProcessedAfter)
+	pagesToProcess, err := db.GetPages(website.ID, page, 1000, processAll, pageProcessedAfter, ignoreWarnings)
 	linksAlreadyProcessed, apErr := db.GetCompletedPageUrls(website.ID)
 	for _, url := range linksAlreadyProcessed {
 		addedPagesSet[GetPageDoneCacheKey(website.ID, url)] = struct{}{}
@@ -630,7 +676,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 	log.Printf("GetPages got %d links to process [linksAlreadyProcessed:%d] [processAll:%v] [pageProcessedAfter:%v]", len(pagesToProcess), len(linksAlreadyProcessed), processAll, pageProcessedAfter)
 	if err != nil || apErr != nil {
 		log.Printf("Error GetLink from %v", err)
-		return err
+		return nil, err
 	}
 
 	if len(pagesToProcess) > 0 {
@@ -642,7 +688,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 			panic(err)
 		}
 		log.Printf("Got %d pagesToSave from fetchContentFromPages", len(pagesToSave))
-
+		return pagesToSave, err
 		/*for _, page := range pagesToSave {
 			//if _, exists := addedPagesSet[page.URL]; !exists {
 			log.Printf("UpsertPage: %s (T:%d, C:%d)", page.URL, len(page.Title), len(page.Content))
@@ -654,9 +700,9 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 			//}
 			//}
 		}*/
+	} else {
+		return nil, nil
 	}
-
-	return err
 }
 
 func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
@@ -803,8 +849,12 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 		tasks = append(tasks,
 			logAction("fetchContentFromPages:Navigate-to", "", false),
 			chromedp.Sleep(2),
+			logAction("fetchContentFromPages:eval:title- document.title", "", false),
 			chromedp.Evaluate(`document.title`, &title),
+			logAction("fetchContentFromPages:eval:title - document.title ", title, false),
+			logAction("fetchContentFromPages:eval:content - document.body.textContent", "", false),
 			chromedp.Evaluate(`document.body.textContent`, &content),
+			logAction("fetchContentFromPages:eval:content", content, false),
 			logAction(fmt.Sprintf("fetchContentFromPages:Got Title (%d) and Content (%d)", len(title), len(content)), page.URL, false),
 			logAction("fetchContentFromPages:GetLinks", page.URL, false),
 			chromedp.Evaluate(allLinksJS, &links),
@@ -814,7 +864,6 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 		blockedUrlsStr := os.Getenv("BLOCKED_URLS")
 
 		if blockedUrlsStr != "" {
-			fmt.Println("Environment variable BLOCKED_URLS is not set")
 
 			// Split the string back into an array
 			blockedURLs := strings.Split(blockedUrlsStr, ",")
@@ -824,6 +873,9 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 					return network.SetBlockedURLS(blockedURLs).Do(ctx)
 				}),
 			)
+		} else {
+			fmt.Println("fetchContentFromPages:Environment variable BLOCKED_URLS is not set")
+			panic("SET THE BLOCKED_URLS")
 		}
 
 		err := chromedp.Run(ctx,
@@ -835,6 +887,13 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 			setWarErr := db.UpdateWarning(page.ID, msg)
 			if setWarErr != nil {
 				panic(setWarErr)
+			}
+
+			if strings.Contains(err.Error(), "context deadline exceeded") {
+				log.Printf("fetchContentFromPages:context deadline exceeded early exit")
+				return newPages, nil
+			} else {
+				log.Printf("fetchContentFromPages:non-deadline error: %v", err.Error())
 			}
 			// panic(err)
 			// return newPages, err
@@ -848,11 +907,11 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 					Links:     links,
 					WebsiteId: website.ID,
 				}
-				log.Printf("fetchContentFromPages - new page \n%v", newPage)
+				log.Printf("fetchContentFromPages - content len: %d [pagecontent len: %d] ", len(content), len(newPage.Content))
 				// ADD the Page object to the "pages" list
 				newPages = append(newPages, newPage)
 
-				insertErr := db.UpsertPage(page)
+				insertErr := db.UpsertPage(newPage)
 				if insertErr != nil {
 					panic(insertErr)
 				}
@@ -908,7 +967,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 					}
 				}
 			} else {
-				log.Printf("fetchContentFromPages:links:skipNewLinkInsert - no new inserts")
+				log.Printf("fetchContentFromPages:links:skipNewLinkInsert - set to skip new inserts")
 			}
 		}
 		if len(newPages) > remainingToProcess {

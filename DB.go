@@ -39,6 +39,17 @@ func (Page) TableName() string {
 	return "pgml.page"
 }
 
+type Question struct {
+	ID              uint      `gorm:"primary_key"`
+	PageURL         string    `gorm:"size:255"` // Foreign key to Page URL
+	WebsiteID       uint      `gorm:"index"`    // Foreign key to Website ID
+	BatchID         uint      `gorm:"index"`    // To identify the batch of questions
+	QuestionText    string    `gorm:"type:text"`
+	RelevantContent string    `gorm:"type:text"`
+	DateCreated     time.Time `gorm:"type:timestamp"`
+	Status          string    `gorm:"size:255"`
+}
+
 func (p Page) ToProcess() bool {
 	return len(p.Content) == 0 || p.DateUpdated.Before(time.Now().Add(-7*24*time.Hour))
 }
@@ -46,6 +57,7 @@ func (p Page) ToProcess() bool {
 const format = "2006-01-02 15:04:05"
 
 func (p Page) PageStatus() string {
+
 	return fmt.Sprintf("[P:%s]", p.DateProcessed.Format(format))
 }
 
@@ -352,6 +364,7 @@ func (db *DB) ResetPage(pageID uint) error {
 }
 
 func (db *DB) UpsertPage(page Page) error {
+	log.Printf("UpsertPage - inserting page %v: %v", page.ID, page.URL)
 	page.DateUpdated = time.Now()
 	page.DateCreated = time.Now()
 	if len(page.Content) > 0 {
@@ -375,7 +388,7 @@ func (db *DB) UpsertPage(page Page) error {
 }
 
 func (db *DB) UpdatePage(page Page) (bool, error) {
-	log.Printf("Updating page: %s\n content len: %+v", page.URL, page)
+	log.Printf("Updating page: %s\n content len: %d %s", page.URL, len(page.Content), page.Title)
 	page.DateUpdated = time.Now()
 	page.DateCreated = time.Now()
 	result := db.conn.Model(&page).Where("pgml.page.url = ?", page.URL).Where("pgml.page.website_id= ?", page.WebsiteId).Updates(page)
@@ -403,7 +416,7 @@ func (db *DB) ListWebsites() ([]Website, error) {
 	return websites, nil
 }
 
-func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterProcessDate time.Time) ([]Page, error) {
+func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterProcessDate time.Time, ignoreWarnings bool) ([]Page, error) {
 	if limit <= 0 {
 		return nil, errors.New("invalid limit value")
 	}
@@ -417,13 +430,15 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 
 	if !processAll {
 		query = query.Where("LENGTH(content) = 0")
-		query = query.Where("LENGTH(warning) = 0")
+		if !ignoreWarnings {
+			query = query.Where("LENGTH(warning) = 0")
+		}
 		//	query = query.Where("date_processed < ?", afterProcessDate)
 	}
 
 	var pages []Page
 	err := query.
-		Order("date_updated ASC").
+		Order("LENGTH(warning) ASC, date_updated ASC").
 		Limit(limit).
 		Offset(offset).
 		Find(&pages).Error
@@ -454,6 +469,15 @@ func (db *DB) ListPages(websiteId uint, page int, pageSize int) ([]Page, error) 
 		return nil, result.Error
 	}
 	return pages, nil
+}
+
+func (db *DB) GetPage(websiteId uint, pageId uint) (*Page, error) {
+	var page Page
+	result := db.conn.Where("website_id = ? AND id = ?", websiteId, pageId).First(&page)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &page, nil
 }
 
 func (db *DB) InsertChat(chat Chat) error {

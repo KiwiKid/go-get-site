@@ -118,7 +118,6 @@ templ websiteDelete(website Website) {
 	<div>
 		<details>
 			<summary>Delete & Reset</summary>
-			<button hx-target="#container" hx-loading="#loading" hx-delete={ website.websiteURLWithPostFix("warnings-reset") } class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">reset-page-warnings</button>
 			<button hx-target="#container" hx-loading="#loading" hx-delete={ website.websiteURLWithPostFix("pages") } class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">reset pages</button>
 			<button hx-target="#container" hx-loading="#loading" hx-confirm="This will delete all info related to this website" hx-delete={ website.websiteURLWithPostFix("all") } class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 focus:ring focus:ring-opacity-50 focus:ring-red-300 focus:border-red-300">DELETE</button>
 			<div id="loading" style="display:none">Loading...</div>
