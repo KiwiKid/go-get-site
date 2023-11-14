@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -15,6 +16,7 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -29,15 +31,15 @@ func main() {
 
 	//// Uncomment to deploy DB changes (commentted out as it improves rebuild time)
 	//// (Or comment to improve build speed)
-
-	// log.Print("Start:NewDB()")
-	// db, err := NewDB()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// log.Print("Start:Migrate()")
-	// db.Migrate()
-
+	/*
+		log.Print("Start:NewDB()")
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+		log.Print("Start:Migrate()")
+		db.Migrate()
+	*/
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -66,7 +68,7 @@ func main() {
 	r.Handle("/search", presentChat()).Methods("GET", "POST")
 	r.Handle("/search/{threadId}", presentChat()).Methods("GET", "POST")
 
-	r.Handle("/site/{websiteId}/pages/{pageId}/question", presentQuestion()).Methods("GET", "POST")
+	r.Handle("/site/{websiteId}/pages/question", presentQuestion()).Methods("GET", "POST")
 
 	r.Handle("/progress", presentLinkCount())
 	r.Use(func(next http.Handler) http.Handler {
@@ -97,33 +99,104 @@ func main() {
 	//}
 	// processLink(ctx, url, *db)
 }
-
 func presentQuestion() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		vars := mux.Vars(r)
 		websiteIdStr := vars["websiteId"]
 		websiteId, err := stringToUint(websiteIdStr)
 		if err != nil {
-			http.Error(w, "stringToUint for websiteId is failed", http.StatusBadRequest)
-			return
+			panic(err)
 		}
 
-		pageIdStr := vars["pageId"]
-		pageId, err := stringToUint(pageIdStr)
-		if err != nil {
-			http.Error(w, "stringToUint for websiteId is failed", http.StatusBadRequest)
-			return
-		}
 		db, err := NewDB()
 		if err != nil {
 			panic(err)
 		}
 
-		page := db.GetPage(websiteId, pageId)
+		website, err := db.GetWebsite(websiteId)
+		if err != nil {
+			panic(err)
+		}
 
-		// call question openai file
+		pageIdStr := r.URL.Query().Get("pageId")
+		pageId, err := stringToUint(pageIdStr)
+		if err != nil {
+			panic(err)
+		}
+		page, err := db.GetPage(websiteId, pageId)
+		if err != nil {
+			panic(err)
+		}
+
+		if r.Method == http.MethodPost {
+
+			/*oai, err := NewOpenAI()
+			if err != nil {
+				failedQuestionRes := questionsFailedResult(*website, pageId, err.Error())
+				templ.Handler(failedQuestionRes).ServeHTTP(w, r)
+			}*/
+
+			/*questions, err := oai.generateQuestions(page.Content, startIndex, endIndex)
+			if err != nil {
+				failedQuestionRes := questionsFailedResult(*website, pageId, err.Error())
+				templ.Handler(failedQuestionRes).ServeHTTP(w, r)
+			}
+
+			if questions == nil {
+				failedQuestionRes := questionsFailedResult(*website, pageId, "Failed to get questions")
+				templ.Handler(failedQuestionRes).ServeHTTP(w, r)
+				return
+			}*/
+			relevantContent := r.FormValue("relevantContent")
+
+			if len(relevantContent) == 0 {
+				failedQuestionRes := questionsFailedResult(*website, pageId, "relevantContent is required")
+				templ.Handler(failedQuestionRes).ServeHTTP(w, r)
+			}
+			// Generate a random number and convert it to uint
+			// Adjust the range according to your needs
+			id := uuid.New()
+
+			inserQuestionErr := db.BatchInsertQuestions([]Question{{WebsiteID: website.ID, PageID: page.ID, BatchID: id, RelevantContent: relevantContent}})
+			if inserQuestionErr != nil {
+				http.Error(w, "BatchInsertQuestions has failed", http.StatusBadRequest)
+				log.Fatalf("BatchInsertQuestions has failed  %v", inserQuestionErr)
+			}
+		}
+
+		questions, getQuestionErr := db.GetQuestions(website.ID, page.ID, 1, 10000)
+		if getQuestionErr != nil {
+			http.Error(w, "GetQuestions has failed", http.StatusBadRequest)
+			log.Fatalf("GetQuestions has failed  %v", getQuestionErr)
+		}
+
+		if len(questions) > 0 {
+			if questions[0].QuestionText == "" {
+				//panic("QuestionText is nul. WTF")
+			}
+		}
+
+		debugAll := ""
+		for _, q := range questions {
+			log.Printf("\n\nquestions: %v", q)
+			debugQ, err := json.MarshalIndent(q.QuestionText, "", "    ")
+			if err != nil {
+				panic(err)
+			}
+			debugAll = debugAll + string(debugQ) + "\n"
+			for _, c := range q.QuestionText {
+				log.Printf("\ncontext:: %s", string(c))
+			}
+		}
+
+		chatComp := questionResult(*website, page.ID, questions, debugAll)
+		templ.Handler(chatComp).ServeHTTP(w, r)
 	}
+}
+
+func handleQuestionError(w http.ResponseWriter, r *http.Request, website *Website, pageId uint, err error) {
+	// Assuming questionsFailedResult can handle a nil website
+
 }
 
 func presentChat() http.HandlerFunc {

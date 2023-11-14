@@ -1,0 +1,37 @@
+package main
+
+import (
+	"strconv"
+)
+
+templ newQuestions(website Website, pageId uint) {
+	<div>
+		<form hx-post={ website.websiteURLWithPostFixAndPageId("pages/question", pageId) }>
+			<label for="relevantContent&gt;&lt;" label></label>
+			<input type="text" name="relevantContent" id="relevantContent"/>
+			<button>Get Questions</button>
+		</form>
+	</div>
+}
+
+templ questionResult(website Website, pageId uint, questions []Question, raw string) {
+
+	<div hx-swap="outerHTML">
+		@newQuestions(website, pageId)
+		<h1>questions: {  strconv.Itoa(len(questions) ) }</h1>
+		for _, q := range questions {
+			<h1>QuestionText:{  strconv.Itoa(len(q.QuestionText) ) } - { raw } </h1>
+			<h1>RelevantContent:{  strconv.Itoa(len(q.RelevantContent) ) } - { q.RelevantContent }</h1>
+		}
+	</div>
+}
+
+templ questionsFailedResult(website Website, pageId uint, errorMsg string) {
+	<div hx-swap="outerHTML">
+		@newQuestions(website, pageId)
+		<div>
+			{ errorMsg }
+		</div>
+	</div>
+}
+

@@ -45,6 +45,19 @@ func doubleEscape(str string) templ.Component {
 
 }
 
+func substring(s string, start uint, end uint) string {
+	// Convert string to rune slice for Unicode safety
+	runeSlice := []rune(s)
+
+	// Check for valid start and end indices
+	if start < 0 || int(end) > len(runeSlice) || start > end {
+		return ""
+	}
+
+	// Return the substring
+	return string(runeSlice[start:end])
+}
+
 type Progress struct {
 	Total int
 	Done  int

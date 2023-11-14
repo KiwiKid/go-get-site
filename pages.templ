@@ -91,19 +91,20 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 						/>
 						<label for="ignoreWarnings" class="text-gray-700">Ignore Warnings</label>
 					</div>
-					<details><summary>advance</summary>
-					<div class="flex items-center space-x-2">
-						<input
- 							type="checkbox"
- 							name="skipNewLinkInsert"
- 							id="skipNewLinkInsert"
- 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
- 							if skipNewLinkInsert {
-								checked="checked"
-							}
-						/>
-						<label for="skipNewLinkInsert" class="text-gray-700">Dont save links</label>
-					</div>
+					<details>
+						<summary>advance</summary>
+						<div class="flex items-center space-x-2">
+							<input
+ 								type="checkbox"
+ 								name="skipNewLinkInsert"
+ 								id="skipNewLinkInsert"
+ 								class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 								if skipNewLinkInsert {
+									checked="checked"
+								}
+							/>
+							<label for="skipNewLinkInsert" class="text-gray-700">Dont save links</label>
+						</div>
 					</details>
 					<div class="flex items-center space-x-2">
 						<label for="processPageSize" class="text-gray-700">Process Page Cutoff:</label>
@@ -226,6 +227,10 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 									}
 									{ item.DateCreated.Local().Format(format) }
 									{ item.DateUpdated.Local().Format(format)  }
+									@newQuestions(website, item.ID)
+
+
+									<div hx-trigger="intersect once" hx-get={ website.websiteURLWithPostFixAndPageId("pages/question", item.ID) }>Loading questions...</div>
 									<div>{ item.PageStatus() }</div>
 								</details>
 							}

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -41,10 +42,10 @@ func (Page) TableName() string {
 
 type Question struct {
 	ID              uint      `gorm:"primary_key"`
-	PageURL         string    `gorm:"size:255"` // Foreign key to Page URL
-	WebsiteID       uint      `gorm:"index"`    // Foreign key to Website ID
-	BatchID         uint      `gorm:"index"`    // To identify the batch of questions
-	QuestionText    string    `gorm:"type:text"`
+	PageID          uint      `gorm:"index"`           // Foreign key to Page URL
+	WebsiteID       uint      `gorm:"index"`           // Foreign key to Website ID
+	BatchID         uuid.UUID `gorm:"type:uuid;index"` // To identify the batch of questions
+	QuestionText    string    `gorm:"-"`
 	RelevantContent string    `gorm:"type:text"`
 	DateCreated     time.Time `gorm:"type:timestamp"`
 	Status          string    `gorm:"size:255"`
@@ -116,6 +117,10 @@ func (w *Website) websiteURLWithPostFix(postfix string) string {
 	return fmt.Sprintf("/site/%d/%s", w.ID, postfix)
 }
 
+func (w *Website) websiteURLWithPostFixAndPageId(postfix string, pageId uint) string {
+	return fmt.Sprintf("/site/%d/%s?pageId=%d", w.ID, postfix, pageId)
+}
+
 func (w *Website) websiteURLWithPagesId(pageId uint) string {
 	return fmt.Sprintf("/site/%d/page/%d", w.ID, pageId)
 }
@@ -180,6 +185,8 @@ func (db *DB) Migrate() {
 	log.Print("Migrate Start - Chat")
 	db.conn.AutoMigrate(&Chat{})
 	log.Print("Migrate Start - Index")
+	db.conn.AutoMigrate(&Question{})
+	log.Print("Migrate Start - Index")
 
 	// Check if the index exists
 	var count int64
@@ -190,8 +197,43 @@ func (db *DB) Migrate() {
 	`, "pgml.page", "idx_website_url").Scan(&count)
 
 	if count == 0 {
-		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url) IF EXISTS")
+		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url)")
 	}
+
+	var columnExists int64
+	db.conn.Raw(`
+        SELECT COUNT(*) 
+        FROM information_schema.columns
+        WHERE table_name = 'questions'
+		AND column_name='question_text'
+	`).Scan(&columnExists)
+
+	if columnExists > 0 {
+		db.conn.Exec(`ALTER TABLE questions DROP COLUMN question_text;`)
+	}
+
+	err := db.conn.Exec(`
+		ALTER TABLE questions 
+		ADD COLUMN question_text text GENERATED ALWAYS AS 
+		(
+			CASE
+				WHEN relevant_content IS NOT NULL AND relevant_content <> '' THEN 
+					pgml.transform(
+						task => '{
+							"task": "text2text-generation",
+							"model": "potsawee/t5-large-generation-squad-QuestionAnswer"
+						}'::JSONB, 
+						inputs => ARRAY[ relevant_content ]
+					)
+				ELSE NULL
+			END
+		) STORED;
+		`).Error
+
+	if err != nil {
+		log.Fatalf("Failed to load question.question_text column %v", err)
+	}
+
 	/*
 			DO $$
 
@@ -203,33 +245,33 @@ func (db *DB) Migrate() {
 
 
 	*/
-	err := db.conn.Exec(`
-		-- Add the new generated embedding column if it doesn't exist
-		DO $$ 
-		BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
-				ALTER TABLE pgml.page 
-				ADD COLUMN embedding vector(384) GENERATED ALWAYS AS 
-				(
-					CASE
-						WHEN content IS NOT NULL AND CONTENT <> '' THEN 
-							pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
-								text => content, 
-								kwargs => '{"device": "cpu"}'::jsonb
-							)
-						ELSE NULL
-					END
-				) STORED;
-			END IF;
-		END $$;
-		`).Error
+	embeddingErr := db.conn.Exec(`
+	-- Add the new generated embedding column if it doesn't exist
+	DO $$ 
+	BEGIN
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
+			ALTER TABLE pgml.page 
+			ADD COLUMN embedding vector(384) GENERATED ALWAYS AS 
+			(
+				CASE
+					WHEN content IS NOT NULL AND CONTENT <> '' THEN 
+						pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
+							text => content, 
+							kwargs => '{"device": "cpu"}'::jsonb
+						)
+					ELSE NULL
+				END
+			) STORED;
+		END IF;
+	END $$;
+	`).Error
+
+	if embeddingErr != nil {
+		log.Fatalf("Failed to load embeddingErr %v", embeddingErr)
+	}
 
 	log.Print("Migrate End - Index")
 
-	if err != nil {
-		log.Print("Migrate End - Index")
-		panic(err)
-	}
 }
 
 func (db *DB) InsertWebsite(website Website) (Website, error) {
@@ -278,6 +320,27 @@ func (db *DB) DeleteWebsite(websiteId uint) error {
 	}
 
 	return nil
+}
+
+func (db *DB) BatchInsertQuestions(questions []Question) error {
+	// Perform the batch insert
+	return db.conn.Create(&questions).Error
+}
+
+func (db *DB) GetQuestions(websiteId uint, pageID uint, page int, limit int) ([]Question, error) {
+	if limit <= 0 {
+		return nil, errors.New("invalid limit value")
+	}
+	if page <= 0 {
+		return nil, errors.New("invalid page value")
+	}
+	offset := (page - 1) * limit
+
+	var questions []Question
+	err := db.conn.Raw("SELECT * FROM questions WHERE website_id = ? LIMIT ? OFFSET ?", websiteId, limit, offset).Scan(&questions).Error
+
+	log.Printf("questions: %v", questions)
+	return questions, err
 }
 
 func (db *DB) DeletePages(websiteId uint) error {
