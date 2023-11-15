@@ -36,6 +36,29 @@ type Page struct {
 	_ struct{} `gorm:"unique_index:idx_website_url;column:website_id;column:url"`
 }
 
+type PageBlock struct {
+	ID        uint   `gorm:"primary_key"`
+	PageID    uint   `gorm:"index;not null"`
+	WebsiteId uint   `gorm:"index;not null"`
+	Content   string `gorm:"type:text"`
+}
+
+func (db *DB) ListPageBlocks(pageID uint) ([]PageBlock, error) {
+	var pageBlocks []PageBlock
+	result := db.conn.Where("page_id = ?", pageID).Find(&pageBlocks)
+	return pageBlocks, result.Error
+}
+
+// BatchInsertPageBlocks inserts multiple PageBlock entries in a batch
+func (db *DB) BatchInsertPageBlocks(blocks []PageBlock) error {
+	return db.conn.Create(&blocks).Error
+}
+
+func (db *DB) DeletePageBlocks(pageId uint) error {
+	result := db.conn.Where("page_id = ?", pageId).Delete(&PageBlock{})
+	return result.Error
+}
+
 func (Page) TableName() string {
 	return "pgml.page"
 }
@@ -106,7 +129,7 @@ func (Chat) TableName() string {
 }
 
 func (w *Website) websiteURL() string {
-	return fmt.Sprintf("/site/%d", w.ID)
+	return fmt.Sprintf("/sites/%d", w.ID)
 }
 
 func (w *Website) getProcessURL() string {
@@ -114,19 +137,23 @@ func (w *Website) getProcessURL() string {
 }
 
 func (w *Website) websiteURLWithPostFix(postfix string) string {
-	return fmt.Sprintf("/site/%d/%s", w.ID, postfix)
+	return fmt.Sprintf("/sites/%d/%s", w.ID, postfix)
 }
 
 func (w *Website) websiteURLWithPostFixAndPageId(postfix string, pageId uint) string {
-	return fmt.Sprintf("/site/%d/%s?pageId=%d", w.ID, postfix, pageId)
+	return fmt.Sprintf("/sites/%d/%s?pageId=%d", w.ID, postfix, pageId)
 }
 
 func (w *Website) websiteURLWithPagesId(pageId uint) string {
-	return fmt.Sprintf("/site/%d/page/%d", w.ID, pageId)
+	return fmt.Sprintf("/sites/%d/pages/%d", w.ID, pageId)
+}
+
+func (w *Website) websiteURLWithPagesIdAndPostFix(pageId uint, postfix string) string {
+	return fmt.Sprintf("/sites/%d/pages/%d/%s", w.ID, pageId, postfix)
 }
 
 func (w *Website) websitePagesURL() string {
-	return fmt.Sprintf("/site/%d/pages", w.ID)
+	return fmt.Sprintf("/sites/%d/pages", w.ID)
 }
 
 func (w *Website) websiteNavigateURL() string {
@@ -138,7 +165,7 @@ func (w *Website) websiteNavigateURL() string {
 }
 
 func (w *Website) websiteLoginURL() string {
-	return fmt.Sprintf("/site/%d/login", w.ID)
+	return fmt.Sprintf("/sites/%d/login", w.ID)
 }
 
 func (w *ChatThread) ChatThreadURL() string {
@@ -178,7 +205,7 @@ func NewDB() (*DB, error) {
 
 func (db *DB) Migrate() {
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
-	log.Print("Migrate Start - Page")
+	log.Print("Migrate ALL START")
 	db.conn.AutoMigrate(&Page{})
 	log.Print("Migrate Start - Website")
 	db.conn.AutoMigrate(&Website{})
@@ -187,6 +214,8 @@ func (db *DB) Migrate() {
 	log.Print("Migrate Start - Index")
 	db.conn.AutoMigrate(&Question{})
 	log.Print("Migrate Start - Index")
+	db.conn.AutoMigrate(&PageBlock{})
+	log.Print("Migrate ALL END")
 
 	// Check if the index exists
 	var count int64

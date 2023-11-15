@@ -228,8 +228,6 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 									{ item.DateCreated.Local().Format(format) }
 									{ item.DateUpdated.Local().Format(format)  }
 									@newQuestions(website, item.ID)
-
-
 									<div hx-trigger="intersect once" hx-get={ website.websiteURLWithPostFixAndPageId("pages/question", item.ID) }>Loading questions...</div>
 									<div>{ item.PageStatus() }</div>
 								</details>
@@ -250,6 +248,14 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 										}
 									</ul>
 								</details>
+							</details>
+						</div>
+						<div class="w-1/4 p-2">
+							<details>
+								<summary>Page Blocks</summary>
+								<div id="page-block-container" hx-trigger="intersect once" hx-get={ website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks") }>Loading blocks...</div>
+								@loadPageBlocks(website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks"))
+								@deletePageBlocks(website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks"))
 							</details>
 						</div>
 						<div class="w-1/3 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{ item.URL }</a></div>

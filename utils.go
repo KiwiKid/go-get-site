@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -25,10 +26,10 @@ func linkGenerator(tagType TagType, postfix string, text string) templ.Component
 
 		switch tagType {
 		case AHref:
-			_, err := io.WriteString(w, fmt.Sprintf(`<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"  href="/site/%s">%s</a>`, escapedUrl, text))
+			_, err := io.WriteString(w, fmt.Sprintf(`<a class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"  href="/sites/%s">%s</a>`, escapedUrl, text))
 			return err
 		case Post:
-			_, err := io.WriteString(w, fmt.Sprintf(`<button  hx-post="/site/%s" hx-target="#container"  class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">%s</button> `, escapedUrl, text))
+			_, err := io.WriteString(w, fmt.Sprintf(`<button  hx-post="/sites/%s" hx-target="#container"  class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">%s</button> `, escapedUrl, text))
 			return err
 		}
 
@@ -43,6 +44,25 @@ func doubleEscape(str string) templ.Component {
 		return err
 	})
 
+}
+
+func splitIntoBlocks(content string) []string {
+	// Regular expression to match two or more newline characters, possibly surrounded by other whitespace
+	re := regexp.MustCompile(`\.\s*\n\s*\n+`)
+
+	// Split the content by the regular expression
+	blocks := re.Split(content, -1)
+
+	// Trim whitespace and filter out any empty blocks
+	var filteredBlocks []string
+	for _, block := range blocks {
+		trimmedBlock := strings.TrimSpace(block)
+		if trimmedBlock != "" {
+			filteredBlocks = append(filteredBlocks, trimmedBlock)
+		}
+	}
+
+	return filteredBlocks
 }
 
 func substring(s string, start uint, end uint) string {

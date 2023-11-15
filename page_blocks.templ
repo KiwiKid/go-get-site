@@ -1,0 +1,23 @@
+package main
+
+templ pageBlocks(blocks []PageBlock) {
+	<div class="font-sans text-gray-800">pageBlocks</div>
+	<ul class="list-disc list-inside bg-white p-4 rounded-lg shadow-md">
+		for _, b := range blocks {
+			<li class="mb-2 text-sm leading-relaxed">{ b.Content }</li>
+		}
+	</ul>
+}
+
+templ loadPageBlocks(url string) {
+	<div>
+		<button hx-target="#page-block-container" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring" hx-post={ url }>Load More</button>
+	</div>
+}
+
+templ deletePageBlocks(url string) {
+	<div>
+		<button hx-target="#page-block-container" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none focus:ring" hx-delete={ url }>Delete</button>
+	</div>
+}
+

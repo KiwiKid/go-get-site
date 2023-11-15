@@ -31,15 +31,20 @@ func main() {
 
 	//// Uncomment to deploy DB changes (commentted out as it improves rebuild time)
 	//// (Or comment to improve build speed)
-	/*
-		log.Print("Start:NewDB()")
+
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		log.Print("Start:Migrate()")
 		db, err := NewDB()
 		if err != nil {
 			panic(err)
 		}
 		log.Print("Start:Migrate()")
 		db.Migrate()
-	*/
+
+	} else {
+		log.Print("Skipping migration")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -57,18 +62,20 @@ func main() {
 	defer cancel()
 
 	r.Handle("/", presentWebsite()).Methods("GET", "POST")
-	r.HandleFunc("/site/{websiteId}", presentWebsite()).Methods("GET", "POST", "PUT")
-	r.HandleFunc("/site/{websiteId}/{deleteOpt}", presentWebsite()).Methods("DELETE")
-	r.HandleFunc("/site/{websiteId}/{deleteOpt}/{pageId}", presentWebsite()).Methods("DELETE")
+	r.HandleFunc("/sites/{websiteId}", presentWebsite()).Methods("GET", "POST", "PUT")
+	r.HandleFunc("/sites/{websiteId}/{deleteOpt}", presentWebsite()).Methods("DELETE")
+	r.HandleFunc("/sites/{websiteId}/{deleteOpt}/{pageId}", presentWebsite()).Methods("DELETE")
 
-	r.HandleFunc("/site/{websiteId}/login", presentLogin(ctx)).Methods("GET")
+	r.HandleFunc("/sites/{websiteId}/pages/{pageId}/blocks", presentPageBlocks()).Methods("GET", "POST", "DELETE")
 
-	r.HandleFunc("/site/{websiteId}/pages", handlePages(ctx)).Methods("GET", "POST")
+	r.HandleFunc("/sites/{websiteId}/login", presentLogin(ctx)).Methods("GET")
+
+	r.HandleFunc("/sites/{websiteId}/pages", handlePages(ctx)).Methods("GET", "POST")
 
 	r.Handle("/search", presentChat()).Methods("GET", "POST")
 	r.Handle("/search/{threadId}", presentChat()).Methods("GET", "POST")
 
-	r.Handle("/site/{websiteId}/pages/question", presentQuestion()).Methods("GET", "POST")
+	r.Handle("/sites/{websiteId}/pages/question", presentQuestion()).Methods("GET", "POST")
 
 	r.Handle("/progress", presentLinkCount())
 	r.Use(func(next http.Handler) http.Handler {
@@ -252,7 +259,8 @@ func presentChat() http.HandlerFunc {
 			query := r.FormValue("query")
 			insErr := db.InsertChat(Chat{ThreadId: threadId, Message: query, WebsiteId: websiteId})
 			if insErr != nil {
-				http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
+				log.Printf("Failed to insert chat %v", insErr)
+				http.Error(w, "InsertChat has failed", http.StatusBadRequest)
 				return
 			}
 
@@ -286,6 +294,84 @@ func presentChat() http.HandlerFunc {
 		chatComp := chat(threadIdStr, websiteIdStr, newChatUrl, chats)
 
 		templ.Handler(chatComp).ServeHTTP(w, r)
+	}
+}
+
+func presentPageBlocks() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Print("presentPageBlocks - NewDB")
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+
+		vars := mux.Vars(r)
+		websiteIdStr := vars["websiteId"]
+		websiteId, err := stringToUint(websiteIdStr)
+		if err != nil {
+			http.Error(w, "stringToUint is failed", http.StatusBadRequest)
+			return
+		}
+		pageIdStr := vars["pageId"]
+		pageId, err := stringToUint(pageIdStr)
+		if err != nil {
+			http.Error(w, "stringToUint for presentPageBlocks failed", http.StatusBadRequest)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			{
+
+				page, getPageErr := db.GetPage(websiteId, pageId)
+				if getPageErr != nil {
+					http.Error(w, "GetPage failed", http.StatusBadRequest)
+					return
+				}
+
+				blocks := splitIntoBlocks(page.Content)
+				var pageBlocks []PageBlock
+				for _, blockContent := range blocks {
+					pageBlock := PageBlock{
+						PageID:  pageId,
+						Content: blockContent,
+					}
+					pageBlocks = append(pageBlocks, pageBlock)
+				}
+
+				// Batch insert PageBlocks into the database
+				if err := db.BatchInsertPageBlocks(pageBlocks); err != nil {
+					log.Printf("BatchInsertPageBlocks - failed %v", err)
+					http.Error(w, "BatchInsertPageBlocks failed", http.StatusInternalServerError)
+					return
+				}
+
+				// Split the page.Content into block that are good for sentence embedding and batch insert PageBlocks into the database using db.BatchInsertPageBlocks()
+				// Include a gorm type def for a PageBlock object, its should include a reference to the id of the 'beforeBlock' and 'AfterBlock'.
+
+			}
+		case http.MethodGet:
+			{
+
+			}
+		case http.MethodDelete:
+			{
+				delPageErr := db.DeletePageBlocks(pageId)
+				if delPageErr != nil {
+					log.Printf("DeletePageBlocks - failed %v", delPageErr)
+					http.Error(w, "DeletePageBlocks failed", http.StatusInternalServerError)
+				}
+			}
+
+		}
+
+		pageBlockList, pageErr := db.ListPageBlocks(pageId)
+		if err != nil {
+			panic(pageErr)
+		}
+		homeComp := pageBlocks(pageBlockList)
+
+		templ.Handler(homeComp).ServeHTTP(w, r)
 	}
 }
 
@@ -492,7 +578,7 @@ func presentWebsite() http.HandlerFunc {
 							return
 						}
 
-						r.Header.Add("HX-Redirect", fmt.Sprintf("/site/%d/pages", websiteId))
+						r.Header.Add("HX-Redirect", fmt.Sprintf("/sites/%d/pages", websiteId))
 
 					}
 				default:
@@ -706,12 +792,12 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			Done:  count.LinksHavePages,
 		}
 
-		thisPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
-		prevPageUrl := fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
+		thisPageUrl := fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
+		prevPageUrl := fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
 
 		var nextPageUrl string
 		if count.TotalLinks > (page * viewPageSize) {
-			nextPageUrl = fmt.Sprintf("/site/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
+			nextPageUrl = fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
 		} else {
 			nextPageUrl = ""
 		}
