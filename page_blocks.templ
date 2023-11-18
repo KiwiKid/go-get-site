@@ -13,7 +13,6 @@ templ pageBlocks(websiteId uint, pageId uint, blocks []PageBlock) {
 						<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">
 							Content-Block -
 							{ strconv.Itoa(num) }
-							{ b.Summary }
 						</summary>
 						<pre class="mt-2 p-4 bg-gray-100 text-gray-800 overflow-auto font-mono rounded-lg">{ b.Content }</pre>
 					</details>
@@ -42,7 +41,6 @@ templ deletePageBlocks(url string) {
 		>
 			Delete
 		</button>
-		
 		<span class="htmx-indicator">@spinner()</span>
 		<span class="htmx-indicator">Deleting...</span>
 	</div>

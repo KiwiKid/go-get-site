@@ -44,7 +44,7 @@ func spinner() templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</style><svg class=\"spinner w-16 h-16 text-blue-600\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke-width=\"4\"></circle><path class=\"opacity-75\" d=\"M12 2v10\" stroke-width=\"4\"></path></svg>")
+		_, err = templBuffer.WriteString("</style><svg class=\"spinner w-16 h-16 text-green-600\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke-width=\"4\"></circle><path class=\"opacity-75\" d=\"M12 2v10\" stroke-width=\"4\"></path></svg>")
 		if err != nil {
 			return err
 		}

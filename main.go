@@ -72,8 +72,8 @@ func main() {
 
 	r.HandleFunc("/sites/{websiteId}/pages", handlePages(ctx)).Methods("GET", "POST")
 
-	r.Handle("/search", presentChat()).Methods("GET", "POST")
-	r.Handle("/search/{threadId}", presentChat()).Methods("GET", "POST")
+	r.Handle("/search", presentQuery()).Methods("GET", "POST")
+	r.Handle("/search/{queryId}", presentQuery()).Methods("GET", "POST")
 
 	r.Handle("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}/questions", presentQuestion()).Methods("GET", "POST")
 
@@ -176,8 +176,8 @@ func presentQuestion() http.HandlerFunc {
 				RelevantContent: relevantContent,
 			}})
 			if inserQuestionErr != nil {
-				http.Error(w, "BatchInsertQuestions has failed", http.StatusBadRequest)
-				log.Fatalf("BatchInsertQuestions has failed  %v", inserQuestionErr)
+				log.Fatalf("BatchInsertQuestions 1 has failed  %v", inserQuestionErr)
+				http.Error(w, "BatchInsertQuestions 1 has failed", http.StatusBadRequest)
 			}
 		}
 
@@ -204,20 +204,20 @@ func handleQuestionError(w http.ResponseWriter, r *http.Request, website *Websit
 
 }
 
-func presentChat() http.HandlerFunc {
+func presentQuery() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Print("presentChat - NewDB")
+		log.Print("presentQuery - NewDB")
 		db, err := NewDB()
 		if err != nil {
 			panic(err)
 		}
 
 		vars := mux.Vars(r)
-		threadIdStr := vars["threadId"]
-		log.Printf("presentChat - threadIdStr %v", threadIdStr)
+		queryIdStr := vars["queryId"]
+		log.Printf("presentQuery - threadIdStr %v", queryIdStr)
 
-		if threadIdStr == "" {
-			log.Printf("presentChat - EMPTY threadIdStr %v", threadIdStr)
+		if queryIdStr == "" {
+			log.Printf("queryHome - EMPTY threadIdStr %v", queryIdStr)
 
 			chatThreads, pageErr := db.ListChatThreads()
 			if err != nil {
@@ -233,16 +233,34 @@ func presentChat() http.HandlerFunc {
 				panic(pageErr)
 			}
 
-			chatComp := threads(chatThreads, newThreadURL, websites)
+			queryContainerComp := queryContainer(chatThreads, newThreadURL, websites)
 
-			templ.Handler(chatComp).ServeHTTP(w, r)
+			templ.Handler(queryContainerComp).ServeHTTP(w, r)
 			return
 		}
 
-		threadId, err := stringToUint(threadIdStr)
-		if threadIdStr == "" || err != nil {
-			http.Error(w, "Failed to ThreadId", http.StatusInternalServerError)
-			return
+		queryId, err := stringToUint(queryIdStr)
+		if queryIdStr == "" || err != nil {
+
+			chats, pageErr := db.ListChats(queryId)
+			if err != nil {
+				panic(pageErr)
+			}
+
+			websiteIdStr := strconv.Itoa(int(chats[0].WebsiteId))
+			websiteId, err := stringToUint(websiteIdStr)
+			if websiteIdStr == "" || err != nil {
+				log.Printf("Failed based on websiteId %v", err)
+				http.Error(w, "Failed based on websiteId", http.StatusInternalServerError)
+				return
+			}
+			newChatUrl := chats[0].ChatURL()
+			log.Printf("queryContainer - EMPTY threadIdStr %v", queryIdStr)
+
+			chatComp := query(queryId, websiteId, newChatUrl, chats)
+
+			templ.Handler(chatComp).ServeHTTP(w, r)
+
 		}
 
 		log.Printf("chat http methd: %v", r.Method)
@@ -255,39 +273,49 @@ func presentChat() http.HandlerFunc {
 				return
 			}
 			query := r.FormValue("query")
-			insErr := db.InsertChat(Chat{ThreadId: threadId, Message: query, WebsiteId: websiteId})
-			if insErr != nil {
-				log.Printf("Failed to insert chat %v", insErr)
+			_, insChatErr := db.InsertChat(Chat{ThreadId: queryId, Message: query, WebsiteId: websiteId})
+			if insChatErr != nil {
+				log.Printf("Failed to insert chat %v", insChatErr)
 				http.Error(w, "InsertChat has failed", http.StatusBadRequest)
 				return
 			}
-
-			pageIdsStr := r.FormValue("pageIds")
-
-			// Split the string by commas
-			idStrs := strings.Split(pageIdsStr, ",")
-
-			// Initialize a slice to hold the uint values
 			var pageIds []uint
+			pageIdsStr := r.FormValue("pageIds")
+			if len(pageIdsStr) == 0 {
+				log.Print("Inserted Chat.")
+			} else {
+				idStrs := strings.Split(pageIdsStr, ",")
 
-			// Convert each string ID to uint and add to the slice
-			for _, idStr := range idStrs {
-				id, err := strconv.ParseUint(idStr, 10, 32)
-				if err != nil {
-					// Handle the error if the conversion fails
-					http.Error(w, "Invalid page ID: "+idStr, http.StatusBadRequest)
-					return
+				log.Printf("Inserted Chat. limit to these pages %s", pageIdsStr)
+				for _, idStr := range idStrs {
+					id, err := strconv.ParseUint(idStr, 10, 32)
+					if err != nil {
+						// Handle the error if the conversion fails
+						http.Error(w, "Invalid page ID: "+idStr, http.StatusBadRequest)
+						return
+					}
+					pageIds = append(pageIds, uint(id))
 				}
-				pageIds = append(pageIds, uint(id))
 			}
 
+			// Split the string by commas
+
+			// Initialize a slice to hold the uint values
+
+			// Convert each string ID to uint and add to the slice
+
+			log.Print("QueryWebsite. Started")
 			queryRes, queryErr := db.QueryWebsite(query, websiteId, pageIds)
 			if queryErr != nil {
-				http.Error(w, "QueryWebsite queryErr\n\n"+queryErr.Error(), http.StatusBadRequest)
+				log.Printf("QueryWebsite. failed - %v", queryErr.Error())
+
+				http.Error(w, "QueryWebsite failed queryErr\n\n"+queryErr.Error(), http.StatusBadRequest)
 				return
 			}
 
-			queryComp := queryResult(queryRes, websiteIdStr, query)
+			log.Printf("QueryWebsite. End - %s", queryRes)
+
+			queryComp := queryResult(queryRes, websiteId, query)
 
 			templ.Handler(queryComp).ServeHTTP(w, r)
 
@@ -299,18 +327,6 @@ func presentChat() http.HandlerFunc {
 			}*/
 		}
 
-		chats, pageErr := db.ListChats(threadId)
-		if err != nil {
-			panic(pageErr)
-		}
-
-		websiteIdStr := strconv.Itoa(int(chats[0].WebsiteId))
-
-		newChatUrl := chats[0].ChatURL()
-
-		chatComp := chat(threadIdStr, websiteIdStr, newChatUrl, chats)
-
-		templ.Handler(chatComp).ServeHTTP(w, r)
 	}
 }
 
@@ -470,10 +486,9 @@ func presentPageBlocks() http.HandlerFunc {
 
 						id := uuid.New()
 
-						content := fmt.Sprintf("(all in the context of %s)\n%s", page.TidyTitle, newBlock.Content)
-
 						genQuestions := r.URL.Query().Get("genQuestionss")
 						if genQuestions == "on" {
+							content := processBlockContent(page.TidyTitle, page.Content)
 							inserQuestionErr := db.BatchInsertQuestions([]Question{{
 								WebsiteID:       websiteId,
 								PageID:          pageId,
@@ -482,8 +497,9 @@ func presentPageBlocks() http.HandlerFunc {
 								RelevantContent: content,
 							}})
 							if inserQuestionErr != nil {
-								http.Error(w, "BatchInsertQuestions has failed", http.StatusBadRequest)
-								log.Fatalf("BatchInsertQuestions has failed  %v", inserQuestionErr)
+								log.Printf("Error: BatchInsertQuestions 2 has failed  %v  with content: %s", inserQuestionErr, content)
+
+								http.Error(w, "BatchInsertQuestions 2  has failed: %s", http.StatusBadRequest)
 							}
 						}
 					}

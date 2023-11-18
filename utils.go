@@ -73,6 +73,12 @@ func (w Website) getTidyTitle(pageTitle string) string {
 	return strings.Replace(pageTitle, w.TitleReplace, "", -1)
 }
 
+func processBlockContent(title string, content string) string {
+	noNewLineContent := strings.Replace(content, "\n", "", -1)
+	result := fmt.Sprintf("(all in the context of %s)\n%s", title, noNewLineContent)
+	return result
+}
+
 func splitIntoBlocks(content string) []string {
 	// Regular expression to match two or more newline characters, possibly surrounded by other whitespace
 	re := regexp.MustCompile(`\.\s*\n\s*\n+`)

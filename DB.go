@@ -22,7 +22,7 @@ type StrArray []string
 type Page struct {
 	ID            uint            `gorm:"primary_key"`
 	Title         string          `gorm:"size:512"`
-	TidyTitle     string          `gorm:"size:512"`
+	TidyTitle     string          `gorm:"size:512;default:''"`
 	Keywords      string          `gorm:"size:512"`
 	Content       string          `gorm:"type:text"`
 	Embedding     []byte          `gorm:"-"`
@@ -42,7 +42,6 @@ type PageBlock struct {
 	ID        uint   `gorm:"primary_key"`
 	PageID    uint   `gorm:"index;not null"`
 	WebsiteId uint   `gorm:"index;not null"`
-	Summary   string `gorm:"type:text"`
 	Content   string `gorm:"type:text"`
 	Embedding []byte `gorm:"-"`
 }
@@ -731,15 +730,15 @@ func (db *DB) GetPageBlock(pageBlockId uint) (*PageBlock, error) {
 	return &pageBlock, nil
 }
 
-func (db *DB) InsertChat(chat Chat) error {
+func (db *DB) InsertChat(chat Chat) (*Chat, error) {
 	log.Printf("Saving chat %v", chat)
 	chat.DateCreated = time.Now()
 	result := db.conn.Create(&chat) //.Clauses(clause.OnConflict{UpdateAll: true})
 	if result.Error != nil {
 		log.Print(result.Error)
-		return result.Error
+		return nil, result.Error
 	}
-	return nil
+	return &chat, nil
 }
 
 func (db *DB) GetImprovedQuestions(websiteId uint, pageId uint, pageBlockId uint) ([]ImprovedQuestion, error) {
@@ -802,26 +801,33 @@ func (db *DB) ListChatThreads() ([]ChatThread, error) {
 }
 
 type PageQueryResult struct {
-	ID       int
-	Content  string
-	Title    string
-	URL      string
-	Keywords string
-	Rank     float64
+	ID        int
+	Content   string
+	TidyTitle string
+	URL       string
+	Keywords  string
+	BlockRank float64
+	PageRank  float64
 }
 
 func (qr PageQueryResult) String() string {
-	return qr.Content + " Rank:" + strconv.FormatFloat(qr.Rank, 'f', -1, 64)
+	return qr.Content + " PageRank:" + strconv.FormatFloat(qr.PageRank, 'f', -1, 64) + " BlockRank:" + strconv.FormatFloat(qr.BlockRank, 'f', -1, 64)
 }
 
 func (db *DB) QueryWebsite(question string, websiteId uint, pageIds []uint) ([]PageQueryResult, error) {
 	var queryResults []PageQueryResult
 
+	var pageQuery string
 	var pageIdStrs []string
 	for _, id := range pageIds {
 		pageIdStrs = append(pageIdStrs, strconv.Itoa(int(id)))
 	}
-	pageIdsCSV := strings.Join(pageIdStrs, ",")
+
+	if len(pageIds) > 0 {
+		pageQuery = fmt.Sprintf("AND p.id IN ARRAY[%s]", strings.Join(pageIdStrs, ","))
+	} else {
+		pageQuery = ""
+	}
 
 	rawSQL := fmt.Sprintf(`
     WITH request AS (
@@ -832,21 +838,19 @@ func (db *DB) QueryWebsite(question string, websiteId uint, pageIds []uint) ([]P
 		)::vector(384) AS embedding
 	  )
 	  SELECT
+	  	pb.id,
+		pb.content,
 	  	p.tidy_title,
 		p.URL,
-		pb.id,
-		pb.content,
-		pb.summary,
 		p.keywords,
-		pb.embedding <=> (SELECT embedding FROM request) AS block_cosine_similarity
 		p.embedding <=> (SELECT embedding FROM request) AS page_cosine_similarity
-	  FROM pgml.page_blocks pb
+	  FROM page_blocks pb
 	  INNER JOIN pgml.page p ON p.id = pb.page_id
-	  WHERE website_id = $2
-	  AND (p.id IN (%s) OR LENGTH(%s) == 0)
-	  ORDER BY page_cosine_similarity, cosine_similarity ASC
-	  LIMIT 3`, pageIdsCSV, pageIdsCSV)
-
+	  WHERE p.website_id = $2
+	  %s
+	  ORDER BY page_cosine_similarity ASC
+	  LIMIT 10`, pageQuery)
+	// 	p.embedding <=> (SELECT embedding FROM request) AS page_cosine_similarity,
 	rows, err := db.conn.Raw(rawSQL, question, websiteId).Rows() // Here we get the raw rows
 	if err != nil {
 		return nil, err
@@ -854,17 +858,18 @@ func (db *DB) QueryWebsite(question string, websiteId uint, pageIds []uint) ([]P
 	defer rows.Close()
 
 	for rows.Next() {
-		var rank float64
+		// var page_cosine_similarity float64
+		var page_cosine_similarity float64
 		var Id int
 		var url string
 		var content string
-		var title string
+		var tidy_title string
 		var keywords string
-		if err := rows.Scan(&Id, &content, &title, &url, &keywords, &rank); err != nil { // Manual scan into individual variables
+		if err := rows.Scan(&Id, &content, &tidy_title, &url, &keywords, &page_cosine_similarity); err != nil { // Manual scan into individual variables
 			return nil, err
 		}
-		log.Printf("rank %v Id %v content %s\n", rank, Id, content)
-		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, Rank: rank, Title: title}
+		log.Printf("brank %v Id %v content %s\n", page_cosine_similarity, Id, content)
+		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, PageRank: page_cosine_similarity, TidyTitle: tidy_title, BlockRank: 0}
 		queryResults = append(queryResults, qr)
 	}
 

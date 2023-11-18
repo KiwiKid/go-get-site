@@ -19,6 +19,7 @@ templ newQuestions(websiteId uint, pageId uint, pageBlockID uint, questionConten
 			</div>
 			<button type="submit" class="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 				Make Question
+				<span class="htmx-indicator">@spinner()</span>
 			</button>
 		</form>
 	</div>
@@ -34,8 +35,8 @@ templ questionResult(websiteId uint, pageId uint, pageBlockId uint, questions []
 					<h3 class="text-xl font-semibold text-gray-700">Question Text: { q.QuestionText }</h3>
 					<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
 						<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">Improve</summary>
-					@newImprovedQuestion(websiteId, pageId, pageBlockId, q)
-					<div hx-trigger="intersect once" hx-get={ questionImprovement(websiteId, pageId, pageBlockId, q.ID, "") }>Loading improvements</div>
+						@newImprovedQuestion(websiteId, pageId, pageBlockId, q)
+						<div hx-trigger="intersect once" hx-get={ questionImprovement(websiteId, pageId, pageBlockId, q.ID, "") }>Loading improvements</div>
 					</details>
 				</div>
 			}

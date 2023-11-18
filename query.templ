@@ -1,8 +1,102 @@
 package main
 
-templ query(websiteId string) {
+import "strconv"
+
+templ queryContainer(threads []ChatThread, newThreadURL string, websites []Website) {
+	<html>
+		@header("chat")
+		<body>
+			@nav("chat")
+			@queryHome(threads, newThreadURL, websites)
+		</body>
+	</html>
+}
+
+templ queryHome(threads []ChatThread, newThreadURL string, websites []Website) {
+	<main class="flex justify-center mt-6" id="query-container">
+		<aside class="w-1/4 border-r border-gray-200 p-4">
+			<h1>Threads</h1>
+			for _, thread := range threads {
+				<div class="flex mb-2 border-b border-gray-200 hover:bg-gray-50">
+					<div>
+						<a href={ templ.URL(thread.ChatThreadURL()) } class="underline">{ thread.FirstMessage } - { strconv.Itoa(int(thread.ThreadId)) }</a>
+					</div>
+				</div>
+			}
+		</aside>
+		<!-- Main content area -->
+		<div class="w-3/4 p-4" hx-swap="outerHTML">
+			<div class="mt-16">
+				<div class="text-gray-700 font-bold mb-4">Search:</div>
+				<form hx-post={ newThreadURL } hx-swap="outerHTML" hx-target="#query-container" class="space-y-4">
+					<fieldset class="space-y-4">
+						<legend class="block text-sm font-medium text-gray-600">WebsiteUrl:</legend>
+						for _, website := range websites {
+							<label class="block">
+								<input type="radio" name="websiteId" value={ strconv.FormatUint(uint64(website.ID), 10) }/>
+								{ website.BaseUrl }
+							</label>
+						}
+					</fieldset>
+					<div class="space-y-4">
+						<label for="query" class="block text-sm font-medium text-gray-600">Query</label>
+						<input type="text" id="query" name="query" value="" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+						<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+					</div>
+				</form>
+			</div>
+		</div>
+	</main>
+}
+
+templ query(threadId uint, websiteId uint, newChatUrl string, chats []Chat) {
 	<div>
-		{ websiteId }
+		<h1>Chat</h1>
+		<div>
+			<div>{ strconv.Itoa(int(websiteId)) }</div>
+			<form hx-post={ newChatUrl } hx-swap="outerHTML" hx-target="#chat-container" class="space-y-4">
+				<input type="text" id="threadId" name="threadId" value={ strconv.Itoa(int(threadId)) } hidden="hidden" required/>
+				<input type="text" id="websiteId" name="websiteId" value={  strconv.Itoa(int(websiteId)) } hidden="hidden" required/>
+				<label for="message" class="block text-sm font-medium text-gray-600">Ask this site:</label>
+				<input type="text" id="message" name="message" value="" required class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+				<input type="submit" value="Submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+			</form>
+		</div>
+		<div id="chat-container"></div>
+		for _, item := range chats {
+			<div class="p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50">
+				<div></div>
+				<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
+					<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">
+						{ item.Message }
+					</summary>
+					{ strconv.Itoa(int(item.ThreadId)) }
+					{ strconv.Itoa(int(item.WebsiteId)) }
+				</details>
+			</div>
+		}
+	</div>
+}
+
+templ queryResult(pageQueryResults []PageQueryResult, websiteId uint, message string) {
+	<div class="p-4">
+		queryResult
+		<div>{ strconv.Itoa(int(websiteId)) }</div>
+		<div class="container mx-auto">
+			<h3>{ message }</h3>
+			for _, queryRes := range pageQueryResults {
+				<div class="p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50 max-h-32 m-4">
+						<a
+							href={ templ.SafeURL(queryRes.URL) }
+							target="_blank"
+							rel="noopener noreferrer"
+							class="text-blue-500 hover:text-blue-700 underline transition duration-300 ease-in-out"
+						>{ queryRes.TidyTitle }</a>
+					{ queryRes.Keywords }
+					<pre>{ queryRes.Content }</pre>
+				</div>
+			}
+		</div>
 	</div>
 }
 

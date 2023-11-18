@@ -61,7 +61,15 @@ func newQuestions(websiteId uint, pageId uint, pageBlockID uint, questionContent
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</button></form></div>")
+		_, err = templBuffer.WriteString(" <span class=\"htmx-indicator\">")
+		if err != nil {
+			return err
+		}
+		err = spinner().Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</span></button></form></div>")
 		if err != nil {
 			return err
 		}
