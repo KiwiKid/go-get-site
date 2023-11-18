@@ -4,31 +4,48 @@ import (
 	"strconv"
 )
 
-templ newQuestions(website Website, pageId uint) {
-	<div>
-		<form hx-post={ website.websiteURLWithPostFixAndPageId("pages/question", pageId) }>
-			<label for="relevantContent&gt;&lt;" label></label>
-			<input type="text" name="relevantContent" id="relevantContent"/>
-			<button>Get Questions</button>
+templ newQuestions(websiteId uint, pageId uint, pageBlockID uint, questionContent string) {
+	<div class="p-4 shadow rounded-lg bg-white">
+		<form hx-post={ websitePageBlockQuestionURL(websiteId, pageId, pageBlockID) } hx-swap="#page-block-container" class="space-y-4">
+			<div>
+				<label for="relevantContent" class="block text-sm font-medium text-gray-700">Raw Source Content</label>
+				<textarea
+ 					type="text"
+ 					rows="5"
+ 					cols="80"
+ 					name="relevantContent"
+ 					id="relevantContent"
+				>{ questionContent }</textarea>
+			</div>
+			<button type="submit" class="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+				Make Question
+			</button>
 		</form>
 	</div>
 }
 
-templ questionResult(website Website, pageId uint, questions []Question, raw string) {
-
-	<div hx-swap="outerHTML">
-		@newQuestions(website, pageId)
-		<h1>questions: {  strconv.Itoa(len(questions) ) }</h1>
-		for _, q := range questions {
-			<h1>QuestionText:{  strconv.Itoa(len(q.QuestionText) ) } - { raw } </h1>
-			<h1>RelevantContent:{  strconv.Itoa(len(q.RelevantContent) ) } - { q.RelevantContent }</h1>
-		}
+templ questionResult(websiteId uint, pageId uint, pageBlockId uint, questions []Question, pageBlockContent string) {
+	<div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" hx-swap="outerHTML">
+		@newQuestions(websiteId, pageId, pageBlockId, pageBlockContent)
+		<h1 class="text-2xl font-bold text-gray-800 mb-4">({ strconv.Itoa(len(questions)) } Existing Questions)</h1>
+		<div class="flex">
+			for _, q := range questions {
+				<div class="w-1/2 border border-2">
+					<h3 class="text-xl font-semibold text-gray-700">Question Text: { q.QuestionText }</h3>
+					<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
+						<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">Improve</summary>
+					@newImprovedQuestion(websiteId, pageId, pageBlockId, q)
+					<div hx-trigger="intersect once" hx-get={ questionImprovement(websiteId, pageId, pageBlockId, q.ID, "") }>Loading improvements</div>
+					</details>
+				</div>
+			}
+		</div>
 	</div>
 }
 
-templ questionsFailedResult(website Website, pageId uint, errorMsg string) {
+templ questionsFailedResult(websiteId uint, pageId uint, pageBlockID uint, errorMsg string) {
 	<div hx-swap="outerHTML">
-		@newQuestions(website, pageId)
+		@newQuestions(websiteId, pageId, pageBlockID, "")
 		<div>
 			{ errorMsg }
 		</div>

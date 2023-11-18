@@ -9,7 +9,9 @@ import "context"
 import "io"
 import "bytes"
 
-func pageBlocks(blocks []PageBlock) templ.Component {
+import "strconv"
+
+func pageBlocks(websiteId uint, pageId uint, blocks []PageBlock) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -22,37 +24,88 @@ func pageBlocks(blocks []PageBlock) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div class=\"font-sans text-gray-800\">")
-		if err != nil {
-			return err
-		}
-		var_2 := `pageBlocks`
-		_, err = templBuffer.WriteString(var_2)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div><ul class=\"list-disc list-inside bg-white p-4 rounded-lg shadow-md\">")
-		if err != nil {
-			return err
-		}
-		for _, b := range blocks {
-			_, err = templBuffer.WriteString("<li class=\"mb-2 text-sm leading-relaxed\">")
+		if len(blocks) == 0 {
+			_, err = templBuffer.WriteString("<div class=\"font-sans text-gray-800\">")
 			if err != nil {
 				return err
 			}
-			var var_3 string = b.Content
-			_, err = templBuffer.WriteString(templ.EscapeString(var_3))
+			var_2 := `(0 blocks - click "Process Page into Blocks" to get started)`
+			_, err = templBuffer.WriteString(var_2)
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</li>")
+			_, err = templBuffer.WriteString("</div>")
 			if err != nil {
 				return err
 			}
-		}
-		_, err = templBuffer.WriteString("</ul>")
-		if err != nil {
-			return err
+		} else {
+			_, err = templBuffer.WriteString("<ul class=\"list-disc list-inside bg-white p-4 rounded-lg shadow-md\">")
+			if err != nil {
+				return err
+			}
+			for num, b := range blocks {
+				_, err = templBuffer.WriteString("<li class=\"mb-2 text-sm leading-relaxed list-none\"><details class=\"p-5 border border-gray-200 rounded-lg shadow-sm\"><summary class=\"cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900\">")
+				if err != nil {
+					return err
+				}
+				var_3 := `Content-Block -`
+				_, err = templBuffer.WriteString(var_3)
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(" ")
+				if err != nil {
+					return err
+				}
+				var var_4 string = strconv.Itoa(num)
+				_, err = templBuffer.WriteString(templ.EscapeString(var_4))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(" ")
+				if err != nil {
+					return err
+				}
+				var var_5 string = b.Summary
+				_, err = templBuffer.WriteString(templ.EscapeString(var_5))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</summary><pre class=\"mt-2 p-4 bg-gray-100 text-gray-800 overflow-auto font-mono rounded-lg\">")
+				if err != nil {
+					return err
+				}
+				var var_6 string = b.Content
+				_, err = templBuffer.WriteString(templ.EscapeString(var_6))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</pre></details></li> <div hx-trigger=\"intersect once\" hx-get=\"")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(templ.EscapeString(websitePageBlockQuestionURL(websiteId, pageId, b.ID)))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("\">")
+				if err != nil {
+					return err
+				}
+				var_7 := `Loading existing questions...`
+				_, err = templBuffer.WriteString(var_7)
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</div>")
+				if err != nil {
+					return err
+				}
+			}
+			_, err = templBuffer.WriteString("</ul>")
+			if err != nil {
+				return err
+			}
 		}
 		if !templIsBuffer {
 			_, err = templBuffer.WriteTo(w)
@@ -69,9 +122,9 @@ func loadPageBlocks(url string) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_4 := templ.GetChildren(ctx)
-		if var_4 == nil {
-			var_4 = templ.NopComponent
+		var_8 := templ.GetChildren(ctx)
+		if var_8 == nil {
+			var_8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div><button hx-target=\"#page-block-container\" class=\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring\" hx-post=\"")
@@ -86,12 +139,21 @@ func loadPageBlocks(url string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_5 := `Load More`
-		_, err = templBuffer.WriteString(var_5)
+		var_9 := `Process Page into Blocks`
+		_, err = templBuffer.WriteString(var_9)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</button></div>")
+		_, err = templBuffer.WriteString(" <span class=\"htmx-indicator\">")
+		if err != nil {
+			return err
+		}
+		var_10 := `Loading...`
+		_, err = templBuffer.WriteString(var_10)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</span></button></div>")
 		if err != nil {
 			return err
 		}
@@ -110,9 +172,9 @@ func deletePageBlocks(url string) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_6 := templ.GetChildren(ctx)
-		if var_6 == nil {
-			var_6 = templ.NopComponent
+		var_11 := templ.GetChildren(ctx)
+		if var_11 == nil {
+			var_11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div><button hx-target=\"#page-block-container\" class=\"px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none focus:ring\" hx-delete=\"")
@@ -127,12 +189,30 @@ func deletePageBlocks(url string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_7 := `Delete`
-		_, err = templBuffer.WriteString(var_7)
+		var_12 := `Delete`
+		_, err = templBuffer.WriteString(var_12)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</button></div>")
+		_, err = templBuffer.WriteString("</button><span class=\"htmx-indicator\">")
+		if err != nil {
+			return err
+		}
+		var_13 := `Loading...`
+		_, err = templBuffer.WriteString(var_13)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</span><span class=\"htmx-indicator\">")
+		if err != nil {
+			return err
+		}
+		var_14 := `Deleting...`
+		_, err = templBuffer.WriteString(var_14)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</span></div>")
 		if err != nil {
 			return err
 		}

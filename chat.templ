@@ -23,8 +23,10 @@ templ chat(threadId string, websiteId string, newChatUrl string, chats []Chat) {
 				for _, item := range chats {
 					<div class="p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50">
 						<div></div>
-						<details>
-							<summary class="cursor-pointer">{ item.Message }</summary>
+						<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
+							<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">
+								{ item.Message }
+							</summary>
 							{ strconv.Itoa(int(item.ThreadId)) }
 							{ strconv.Itoa(int(item.WebsiteId)) }
 						</details>

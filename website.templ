@@ -34,6 +34,10 @@ templ editWebsite(website Website) {
 						<label for="preLoadPageClickSelector" class="block text-sm font-medium text-gray-600">PreLoadPageClickSelector:</label>
 						<input type="text" id="preLoadPageClickSelector" name="preLoadPageClickSelector" placeholder="input[id=&#39;expand-all-the-things&#39;]" value={ website.PreLoadPageClickSelector } title="an (optional) CSS selector for a click before the content is loaded for each page " class="w-full p-2 border rounded focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
 					</div>
+					<div class="w-1/2" title="(optional) replace text in the page title">
+						<label for="titleReplace" class="block text-sm font-medium text-gray-600">Title Replace:</label>
+						<input type="text" id="titleReplace" name="titleReplace" value={ website.TitleReplace } placeholder="- title on every page" class="p-2 border rounded w-full focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300"/>
+					</div>
 					<details>
 						<summary>Login options</summary>
 						<div class="space-y-4">

@@ -9,7 +9,7 @@ import "context"
 import "io"
 import "bytes"
 
-func task(siteUrl string) templ.Component {
+func query(websiteId string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -22,41 +22,16 @@ func task(siteUrl string) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<html lang=\"en\">")
+		_, err = templBuffer.WriteString("<div>")
 		if err != nil {
 			return err
 		}
-		err = header("task").Render(ctx, templBuffer)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("<body><div hx-get=\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(templ.EscapeString(siteUrl))
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("\" hx-trigger=\"load\">")
-		if err != nil {
-			return err
-		}
-		var var_2 string = siteUrl
+		var var_2 string = websiteId
 		_, err = templBuffer.WriteString(templ.EscapeString(var_2))
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(" <span alt=\"Result loading...\" class=\"htmx-indicator\" width=\"150\">")
-		if err != nil {
-			return err
-		}
-		var_3 := `Loading`
-		_, err = templBuffer.WriteString(var_3)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</span></div></body></html>")
+		_, err = templBuffer.WriteString("</div>")
 		if err != nil {
 			return err
 		}

@@ -96,7 +96,7 @@ func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) te
 			return err
 		}
 		for _, item := range chats {
-			_, err = templBuffer.WriteString("<div class=\"p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div></div><details><summary class=\"cursor-pointer\">")
+			_, err = templBuffer.WriteString("<div class=\"p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50\"><div></div><details class=\"p-5 border border-gray-200 rounded-lg shadow-sm\"><summary class=\"cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900\">")
 			if err != nil {
 				return err
 			}

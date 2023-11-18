@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -66,7 +65,8 @@ func main() {
 	r.HandleFunc("/sites/{websiteId}/{deleteOpt}", presentWebsite()).Methods("DELETE")
 	r.HandleFunc("/sites/{websiteId}/{deleteOpt}/{pageId}", presentWebsite()).Methods("DELETE")
 
-	r.HandleFunc("/sites/{websiteId}/pages/{pageId}/blocks", presentPageBlocks()).Methods("GET", "POST", "DELETE")
+	r.HandleFunc("/sites/{websiteId}/pages/{pageId}/blocks", presentPageBlocks()).Methods("GET", "DELETE", "POST")
+	r.HandleFunc("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}", presentPageBlocks()).Methods("GET", "POST")
 
 	r.HandleFunc("/sites/{websiteId}/login", presentLogin(ctx)).Methods("GET")
 
@@ -75,7 +75,9 @@ func main() {
 	r.Handle("/search", presentChat()).Methods("GET", "POST")
 	r.Handle("/search/{threadId}", presentChat()).Methods("GET", "POST")
 
-	r.Handle("/sites/{websiteId}/pages/question", presentQuestion()).Methods("GET", "POST")
+	r.Handle("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}/questions", presentQuestion()).Methods("GET", "POST")
+
+	r.Handle("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}/questions/{questionId}/improved", presentImprovedQuestions()).Methods("GET", "POST")
 
 	r.Handle("/progress", presentLinkCount())
 	r.Use(func(next http.Handler) http.Handler {
@@ -124,13 +126,18 @@ func presentQuestion() http.HandlerFunc {
 		if err != nil {
 			panic(err)
 		}
-
-		pageIdStr := r.URL.Query().Get("pageId")
+		pageIdStr := vars["pageId"]
 		pageId, err := stringToUint(pageIdStr)
 		if err != nil {
 			panic(err)
 		}
 		page, err := db.GetPage(websiteId, pageId)
+		if err != nil {
+			panic(err)
+		}
+
+		pageBlockIdStr := vars["pageBlockId"]
+		pageBlockId, err := stringToUint(pageBlockIdStr)
 		if err != nil {
 			panic(err)
 		}
@@ -157,46 +164,37 @@ func presentQuestion() http.HandlerFunc {
 			relevantContent := r.FormValue("relevantContent")
 
 			if len(relevantContent) == 0 {
-				failedQuestionRes := questionsFailedResult(*website, pageId, "relevantContent is required")
+				failedQuestionRes := questionsFailedResult(website.ID, pageId, pageBlockId, "relevantContent is required")
 				templ.Handler(failedQuestionRes).ServeHTTP(w, r)
 			}
-			// Generate a random number and convert it to uint
-			// Adjust the range according to your needs
 			id := uuid.New()
-
-			inserQuestionErr := db.BatchInsertQuestions([]Question{{WebsiteID: website.ID, PageID: page.ID, BatchID: id, RelevantContent: relevantContent}})
+			inserQuestionErr := db.BatchInsertQuestions([]Question{{
+				WebsiteID:       website.ID,
+				PageID:          page.ID,
+				BatchID:         id,
+				PageBlockID:     pageBlockId,
+				RelevantContent: relevantContent,
+			}})
 			if inserQuestionErr != nil {
 				http.Error(w, "BatchInsertQuestions has failed", http.StatusBadRequest)
 				log.Fatalf("BatchInsertQuestions has failed  %v", inserQuestionErr)
 			}
 		}
 
-		questions, getQuestionErr := db.GetQuestions(website.ID, page.ID, 1, 10000)
+		questions, getQuestionErr := db.GetQuestions(website.ID, page.ID, pageBlockId, 1, 10000)
 		if getQuestionErr != nil {
 			http.Error(w, "GetQuestions has failed", http.StatusBadRequest)
 			log.Fatalf("GetQuestions has failed  %v", getQuestionErr)
 		}
 
-		if len(questions) > 0 {
-			if questions[0].QuestionText == "" {
-				//panic("QuestionText is nul. WTF")
-			}
+		pageBlock, getPageErr := db.GetPageBlock(pageBlockId)
+		if getPageErr != nil {
+			log.Printf("getPage - failed %v", err)
+			http.Error(w, "GetPage failed", http.StatusBadRequest)
+			return
 		}
 
-		debugAll := ""
-		for _, q := range questions {
-			log.Printf("\n\nquestions: %v", q)
-			debugQ, err := json.MarshalIndent(q.QuestionText, "", "    ")
-			if err != nil {
-				panic(err)
-			}
-			debugAll = debugAll + string(debugQ) + "\n"
-			for _, c := range q.QuestionText {
-				log.Printf("\ncontext:: %s", string(c))
-			}
-		}
-
-		chatComp := questionResult(*website, page.ID, questions, debugAll)
+		chatComp := questionResult(website.ID, page.ID, pageBlock.ID, questions, pageBlock.Content)
 		templ.Handler(chatComp).ServeHTTP(w, r)
 	}
 }
@@ -264,7 +262,26 @@ func presentChat() http.HandlerFunc {
 				return
 			}
 
-			queryRes, queryErr := db.QueryWebsite(query, websiteId)
+			pageIdsStr := r.FormValue("pageIds")
+
+			// Split the string by commas
+			idStrs := strings.Split(pageIdsStr, ",")
+
+			// Initialize a slice to hold the uint values
+			var pageIds []uint
+
+			// Convert each string ID to uint and add to the slice
+			for _, idStr := range idStrs {
+				id, err := strconv.ParseUint(idStr, 10, 32)
+				if err != nil {
+					// Handle the error if the conversion fails
+					http.Error(w, "Invalid page ID: "+idStr, http.StatusBadRequest)
+					return
+				}
+				pageIds = append(pageIds, uint(id))
+			}
+
+			queryRes, queryErr := db.QueryWebsite(query, websiteId, pageIds)
 			if queryErr != nil {
 				http.Error(w, "QueryWebsite queryErr\n\n"+queryErr.Error(), http.StatusBadRequest)
 				return
@@ -297,11 +314,12 @@ func presentChat() http.HandlerFunc {
 	}
 }
 
-func presentPageBlocks() http.HandlerFunc {
+func presentImprovedQuestions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Print("presentPageBlocks - NewDB")
+		log.Print("presentImprovedQuestions - NewDB")
 		db, err := NewDB()
 		if err != nil {
+			log.Printf("NewDB failed %v", err)
 			panic(err)
 		}
 
@@ -309,13 +327,107 @@ func presentPageBlocks() http.HandlerFunc {
 		websiteIdStr := vars["websiteId"]
 		websiteId, err := stringToUint(websiteIdStr)
 		if err != nil {
-			http.Error(w, "stringToUint is failed", http.StatusBadRequest)
+			log.Printf("websiteId - failed %v", err)
+			http.Error(w, "websiteId stringToUint is failed", http.StatusBadRequest)
 			return
 		}
 		pageIdStr := vars["pageId"]
-		pageId, err := stringToUint(pageIdStr)
+		pageId, pageIdErr := stringToUint(pageIdStr)
+		if pageIdErr != nil {
+			log.Printf("pageId - failed %v", pageIdErr)
+			http.Error(w, "pageIdstringToUint for presentPageBlocks failed", http.StatusBadRequest)
+			return
+		}
+
+		pageBlockIdStr := vars["pageBlockId"]
+		pageBlockId, pageBlockIdErr := stringToUint(pageBlockIdStr)
+		if pageBlockIdErr != nil {
+			log.Printf("pageId - failed %v", pageBlockIdErr)
+			http.Error(w, "stringToUint for pageBlockId failed", http.StatusBadRequest)
+			return
+		}
+
+		questionIdStr := vars["questionId"]
+		questionId, questionIdStrErr := stringToUint(questionIdStr)
+		if questionIdStrErr != nil {
+			log.Printf("questionIdStrErr - failed %v", questionIdStrErr)
+			http.Error(w, "stringToUint for questionIdStrErr failed", http.StatusBadRequest)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			mode := r.URL.Query().Get("mode")
+			switch mode {
+			case "new":
+				{
+					rawQuestionText := r.FormValue("rawQuestionText")
+					rawQuestionAnswer := r.FormValue("rawQuestionAnswer")
+					insErr := db.InsertImprovedQuestion(ImprovedQuestion{
+						WebsiteID:          websiteId,
+						PageID:             pageId,
+						PageBlockID:        pageBlockId,
+						QuestionID:         questionId,
+						QuestionText:       rawQuestionText,
+						CorrectAnswerText:  rawQuestionAnswer,
+						IncorrectAnswerOne: "",
+						IncorrectAnswerTwo: ""})
+					if insErr != nil {
+						log.Printf("Failed to insert chat %v", insErr)
+						http.Error(w, "InsertChat has failed", http.StatusBadRequest)
+						return
+					}
+				}
+			case "update":
+				{
+
+				}
+			case "gen-answers":
+				{
+
+				}
+			default:
+				{
+					panic("no implemented, set a mode")
+				}
+			}
+		}
+
+		impQuestions, impQErr := db.GetImprovedQuestions(websiteId, pageId, pageBlockId)
+		if impQErr != nil {
+			log.Printf("GetImprovedQuestions - failed %v", impQErr)
+			panic(impQErr)
+		}
+		log.Print("GetImprovedQuestions:end")
+
+		impQComp := improvedQuestions(websiteId, pageId, pageBlockId, impQuestions)
+
+		templ.Handler(impQComp).ServeHTTP(w, r)
+	}
+}
+
+func presentPageBlocks() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Print("presentPageBlocks - NewDB")
+		db, err := NewDB()
 		if err != nil {
-			http.Error(w, "stringToUint for presentPageBlocks failed", http.StatusBadRequest)
+			log.Printf("NewDB failed %v", err)
+			panic(err)
+		}
+
+		vars := mux.Vars(r)
+		websiteIdStr := vars["websiteId"]
+		websiteId, err := stringToUint(websiteIdStr)
+		if err != nil {
+			log.Printf("websiteId - failed %v", err)
+			http.Error(w, "websiteId stringToUint is failed", http.StatusBadRequest)
+			return
+		}
+		pageIdStr := vars["pageId"]
+		pageId, pageIdErr := stringToUint(pageIdStr)
+		if pageIdErr != nil {
+			log.Printf("pageId - failed %v", pageIdErr)
+			http.Error(w, "pageIdstringToUint for presentPageBlocks failed", http.StatusBadRequest)
 			return
 		}
 
@@ -325,35 +437,68 @@ func presentPageBlocks() http.HandlerFunc {
 
 				page, getPageErr := db.GetPage(websiteId, pageId)
 				if getPageErr != nil {
+					log.Printf("getPage - failed %v", err)
 					http.Error(w, "GetPage failed", http.StatusBadRequest)
 					return
 				}
+
+				log.Printf("presentPageBlock:got-page %v length: %d", page.ID, len(page.Content))
 
 				blocks := splitIntoBlocks(page.Content)
 				var pageBlocks []PageBlock
 				for _, blockContent := range blocks {
 					pageBlock := PageBlock{
-						PageID:  pageId,
-						Content: blockContent,
+						WebsiteId: websiteId,
+						PageID:    pageId,
+						Content:   blockContent,
 					}
 					pageBlocks = append(pageBlocks, pageBlock)
 				}
 
-				// Batch insert PageBlocks into the database
-				if err := db.BatchInsertPageBlocks(pageBlocks); err != nil {
-					log.Printf("BatchInsertPageBlocks - failed %v", err)
-					http.Error(w, "BatchInsertPageBlocks failed", http.StatusInternalServerError)
-					return
+				log.Printf("presentPageBlock:got %d blocks", len(pageBlocks))
+				if len(pageBlocks) > 0 {
+					// Batch insert PageBlocks into the database
+					blocks, err := db.BatchInsertPageBlocks(pageBlocks)
+
+					if err != nil {
+						log.Printf("BatchInsertPageBlocks - failed %v", err)
+						http.Error(w, "BatchInsertPageBlocks failed", http.StatusInternalServerError)
+						return
+					}
+
+					for _, newBlock := range blocks {
+
+						id := uuid.New()
+
+						content := fmt.Sprintf("(all in the context of %s)\n%s", page.TidyTitle, newBlock.Content)
+
+						genQuestions := r.URL.Query().Get("genQuestionss")
+						if genQuestions == "on" {
+							inserQuestionErr := db.BatchInsertQuestions([]Question{{
+								WebsiteID:       websiteId,
+								PageID:          pageId,
+								BatchID:         id,
+								PageBlockID:     newBlock.ID,
+								RelevantContent: content,
+							}})
+							if inserQuestionErr != nil {
+								http.Error(w, "BatchInsertQuestions has failed", http.StatusBadRequest)
+								log.Fatalf("BatchInsertQuestions has failed  %v", inserQuestionErr)
+							}
+						}
+					}
+
+				} else {
+					log.Print("BatchInsertPageBlocks:none-to-add for \n%s", page.Content)
 				}
+
+				log.Print("BatchInsertPageBlocks:done:%d", len(pageBlocks))
 
 				// Split the page.Content into block that are good for sentence embedding and batch insert PageBlocks into the database using db.BatchInsertPageBlocks()
 				// Include a gorm type def for a PageBlock object, its should include a reference to the id of the 'beforeBlock' and 'AfterBlock'.
 
 			}
-		case http.MethodGet:
-			{
 
-			}
 		case http.MethodDelete:
 			{
 				delPageErr := db.DeletePageBlocks(pageId)
@@ -362,14 +507,21 @@ func presentPageBlocks() http.HandlerFunc {
 					http.Error(w, "DeletePageBlocks failed", http.StatusInternalServerError)
 				}
 			}
+		case http.MethodGet:
+			{
 
+			}
 		}
+		log.Print("ListPageBlocks:start")
 
 		pageBlockList, pageErr := db.ListPageBlocks(pageId)
-		if err != nil {
+		if pageErr != nil {
+			log.Printf("pageBlockList - failed %v", pageErr)
 			panic(pageErr)
 		}
-		homeComp := pageBlocks(pageBlockList)
+		log.Print("ListPageBlocks:end")
+
+		homeComp := pageBlocks(websiteId, pageId, pageBlockList)
 
 		templ.Handler(homeComp).ServeHTTP(w, r)
 	}
@@ -407,6 +559,8 @@ func presentWebsite() http.HandlerFunc {
 				loginPass := r.FormValue("loginPass")
 				loginPassSelector := r.FormValue("loginPassSelector")
 				preLoadPageClickSelector := r.FormValue("preLoadPageClickSelector")
+				titleReplace := r.FormValue("titleReplace")
+
 				startUrl := r.FormValue("startUrl")
 				log.Printf("Form Values - websiteUrl: %s, customQueryParam: %s, loginName: %s, loginNameSelector: %s, loginPass: %s, loginPassSelector: %s",
 					websiteUrl, customQueryParam, loginName, loginNameSelector, loginPass, loginPassSelector)
@@ -420,6 +574,7 @@ func presentWebsite() http.HandlerFunc {
 					LoginNameSelector:        loginNameSelector,
 					LoginPassSelector:        loginPassSelector,
 					PreLoadPageClickSelector: preLoadPageClickSelector,
+					TitleReplace:             titleReplace,
 				})
 				if err != nil {
 					http.Error(w, "InsertWebsite is failed", http.StatusBadRequest)
@@ -1062,6 +1217,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 				newPage := Page{
 					URL:       page.URL,
 					Title:     title,
+					TidyTitle: website.getTidyTitle(title),
 					Content:   content,
 					Links:     links,
 					WebsiteId: website.ID,

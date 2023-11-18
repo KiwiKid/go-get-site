@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ type StrArray []string
 type Page struct {
 	ID            uint            `gorm:"primary_key"`
 	Title         string          `gorm:"size:512"`
+	TidyTitle     string          `gorm:"size:512"`
 	Keywords      string          `gorm:"size:512"`
 	Content       string          `gorm:"type:text"`
 	Embedding     []byte          `gorm:"-"`
@@ -40,7 +42,9 @@ type PageBlock struct {
 	ID        uint   `gorm:"primary_key"`
 	PageID    uint   `gorm:"index;not null"`
 	WebsiteId uint   `gorm:"index;not null"`
+	Summary   string `gorm:"type:text"`
 	Content   string `gorm:"type:text"`
+	Embedding []byte `gorm:"-"`
 }
 
 func (db *DB) ListPageBlocks(pageID uint) ([]PageBlock, error) {
@@ -49,9 +53,14 @@ func (db *DB) ListPageBlocks(pageID uint) ([]PageBlock, error) {
 	return pageBlocks, result.Error
 }
 
-// BatchInsertPageBlocks inserts multiple PageBlock entries in a batch
-func (db *DB) BatchInsertPageBlocks(blocks []PageBlock) error {
-	return db.conn.Create(&blocks).Error
+func (db *DB) BatchInsertPageBlocks(blocks []PageBlock) ([]PageBlock, error) {
+	log.Printf("BatchInsertPageBlocks: Inserting %d blocks", len(blocks))
+
+	if err := db.conn.Omit("Summary").Create(&blocks).Error; err != nil {
+		return nil, err
+	}
+
+	return blocks, nil
 }
 
 func (db *DB) DeletePageBlocks(pageId uint) error {
@@ -66,12 +75,27 @@ func (Page) TableName() string {
 type Question struct {
 	ID              uint      `gorm:"primary_key"`
 	PageID          uint      `gorm:"index"`           // Foreign key to Page URL
+	PageBlockID     uint      `gorm:"index"`           // Foreign key to Page URL
 	WebsiteID       uint      `gorm:"index"`           // Foreign key to Website ID
 	BatchID         uuid.UUID `gorm:"type:uuid;index"` // To identify the batch of questions
-	QuestionText    string    `gorm:"-"`
+	QuestionText    string    `gorm:"-:migration"`
+	QuestionTextTwo string    `gorm:"-:migration"`
 	RelevantContent string    `gorm:"type:text"`
 	DateCreated     time.Time `gorm:"type:timestamp"`
 	Status          string    `gorm:"size:255"`
+}
+
+type ImprovedQuestion struct {
+	QuestionID         uint      `gorm:"index"`
+	PageID             uint      `gorm:"index"` // Foreign key to Page URL
+	PageBlockID        uint      `gorm:"index"` // Foreign key to Page URL
+	WebsiteID          uint      `gorm:"index"` // Foreign key to Website ID
+	QuestionText       string    `gorm:"type:text"`
+	CorrectAnswerText  string    `gorm:"type:text"`
+	IncorrectAnswerOne string    `gorm:"type:text"`
+	IncorrectAnswerTwo string    `gorm:"type:text"`
+	DateCreated        time.Time `gorm:"type:timestamp"`
+	DateModified       time.Time `gorm:"type:timestamp"`
 }
 
 func (p Page) ToProcess() bool {
@@ -92,6 +116,7 @@ type Website struct {
 	StartUrl                 string    `gorm:"size:1024"`
 	PreLoadPageClickSelector string    `gorm:"size:512"`
 	RemoveAnchorTags         bool      `gorm:"type:boolean;default:true"`
+	TitleReplace             string    `gorm:"size:512"`
 	DateCreated              time.Time `gorm:"type:timestamp"`
 	LoginName                string    `gorm:"size:512"`
 	LoginNameSelector        string    `gorm:"size:512"`
@@ -140,8 +165,25 @@ func (w *Website) websiteURLWithPostFix(postfix string) string {
 	return fmt.Sprintf("/sites/%d/%s", w.ID, postfix)
 }
 
-func (w *Website) websiteURLWithPostFixAndPageId(postfix string, pageId uint) string {
-	return fmt.Sprintf("/sites/%d/%s?pageId=%d", w.ID, postfix, pageId)
+func websitePageBlocksURL(websiteId uint, pageId uint) string {
+	return fmt.Sprintf("/sites/%d/pages/%d/blocks", websiteId, pageId)
+}
+
+func websitePageBlockQuestionURL(websiteId uint, pageId uint, pageBlockId uint) string {
+	return fmt.Sprintf("/sites/%d/pages/%d/blocks/%d/questions", websiteId, pageId, pageBlockId)
+}
+
+func questionImprovement(websiteId uint, pageId uint, pageBlockId uint, questionId uint, mode string) string {
+	if len(mode) > 0 {
+		return fmt.Sprintf("/sites/%d/pages/%d/blocks/%d/questions/%d/improved?mode=%s", websiteId, pageId, pageBlockId, questionId, mode)
+	} else {
+		return fmt.Sprintf("/sites/%d/pages/%d/blocks/%d/questions/%d/improved", websiteId, pageId, pageBlockId, questionId)
+	}
+
+}
+
+func websitePageBlockURL(websiteId uint, pageId uint, pageBlockId uint) string {
+	return fmt.Sprintf("/sites/%d/pages/%d/blocks/%d", websiteId, pageId, pageBlockId)
 }
 
 func (w *Website) websiteURLWithPagesId(pageId uint) string {
@@ -194,11 +236,14 @@ type DB struct {
 
 // NewDB creates a new DB instance with GORM
 func NewDB() (*DB, error) {
+	log.Print("Init DB...")
 	connStr := os.Getenv("DB_CONN_STR")
 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
+		log.Printf("Init DB..,failed %v...", err)
 		panic(err)
 	}
+	log.Print("Init DB...Success")
 
 	return &DB{conn: db}, nil
 }
@@ -207,74 +252,7 @@ func (db *DB) Migrate() {
 	// AutoMigrate will ONLY create tables, missing columns and missing indexes
 	log.Print("Migrate ALL START")
 	db.conn.AutoMigrate(&Page{})
-	log.Print("Migrate Start - Website")
-	db.conn.AutoMigrate(&Website{})
-	log.Print("Migrate Start - Chat")
-	db.conn.AutoMigrate(&Chat{})
-	log.Print("Migrate Start - Index")
-	db.conn.AutoMigrate(&Question{})
-	log.Print("Migrate Start - Index")
-	db.conn.AutoMigrate(&PageBlock{})
-	log.Print("Migrate ALL END")
-
-	// Check if the index exists
-	var count int64
-	db.conn.Raw(`
-        SELECT COUNT(*) 
-        FROM pg_indexes 
-        AND indexname = ?
-	`, "pgml.page", "idx_website_url").Scan(&count)
-
-	if count == 0 {
-		db.conn.Exec("CREATE INDEX idx_website_url ON pgml.page (url)")
-	}
-
-	var columnExists int64
-	db.conn.Raw(`
-        SELECT COUNT(*) 
-        FROM information_schema.columns
-        WHERE table_name = 'questions'
-		AND column_name='question_text'
-	`).Scan(&columnExists)
-
-	if columnExists > 0 {
-		db.conn.Exec(`ALTER TABLE questions DROP COLUMN question_text;`)
-	}
-
-	err := db.conn.Exec(`
-		ALTER TABLE questions 
-		ADD COLUMN question_text text GENERATED ALWAYS AS 
-		(
-			CASE
-				WHEN relevant_content IS NOT NULL AND relevant_content <> '' THEN 
-					pgml.transform(
-						task => '{
-							"task": "text2text-generation",
-							"model": "potsawee/t5-large-generation-squad-QuestionAnswer"
-						}'::JSONB, 
-						inputs => ARRAY[ relevant_content ]
-					)
-				ELSE NULL
-			END
-		) STORED;
-		`).Error
-
-	if err != nil {
-		log.Fatalf("Failed to load question.question_text column %v", err)
-	}
-
-	/*
-			DO $$
-
-		--	BEGIN
-		--		IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
-		--			ALTER TABLE pgml.page DROP COLUMN embedding;
-		--		END IF;
-		--	END $$;
-
-
-	*/
-	embeddingErr := db.conn.Exec(`
+	pageEmbeddingErr := db.conn.Exec(`
 	-- Add the new generated embedding column if it doesn't exist
 	DO $$ 
 	BEGIN
@@ -295,8 +273,180 @@ func (db *DB) Migrate() {
 	END $$;
 	`).Error
 
-	if embeddingErr != nil {
-		log.Fatalf("Failed to load embeddingErr %v", embeddingErr)
+	if pageEmbeddingErr != nil {
+		log.Fatalf("Failed to load embeddingErr %v", pageEmbeddingErr)
+	}
+	log.Print("Migrate Start - Website")
+	db.conn.AutoMigrate(&Website{})
+	log.Print("Migrate Start - Chat")
+	db.conn.AutoMigrate(&Chat{})
+	log.Print("Migrate Start - Question")
+	db.conn.AutoMigrate(&Question{})
+
+	var columnExists int64
+	db.conn.Raw(`
+        SELECT COUNT(*) 
+        FROM information_schema.columns
+        WHERE table_name = 'questions'
+		AND column_name='question_text'
+	`).Scan(&columnExists)
+
+	if columnExists == 0 {
+		err := db.conn.Exec(`
+			ALTER TABLE questions
+			ADD COLUMN question_text text GENERATED ALWAYS AS 
+			(
+				CASE
+					WHEN relevant_content IS NOT NULL AND relevant_content <> '' THEN 
+						(pgml.transform(
+							task => '{
+								"task": "text2text-generation",
+								"model": "potsawee/t5-large-generation-squad-QuestionAnswer"
+							}'::JSONB, 
+							inputs => ARRAY[ relevant_content ]
+							,     args => '{
+								"max_length" : 200
+							}'::JSONB
+						)::JSONB -> 0 ->> 'generated_text')
+					ELSE NULL
+				END
+			) STORED;
+			`).Error
+
+		if err != nil {
+			log.Fatalf("Failed to load questions.question_text column %v", err)
+		}
+	}
+
+	var columnQtwoExists int64
+	db.conn.Raw(`
+        SELECT COUNT(*) 
+        FROM information_schema.columns
+        WHERE table_name = 'questions'
+		AND column_name='question_text_two'
+	`).Scan(&columnQtwoExists)
+
+	if columnQtwoExists == 0 {
+		qtextErr := db.conn.Exec(`
+		ALTER TABLE questions
+		ADD COLUMN question_text_two text GENERATED ALWAYS AS 
+		(
+			CASE
+				WHEN relevant_content IS NOT NULL AND relevant_content <> '' THEN 
+					(pgml.transform(
+						task => '{
+							"task": "text2text-generation"
+						}'::JSONB, 
+						inputs => ARRAY[ relevant_content ]
+						, args => '{
+							"max_length" : 100
+						}'::JSONB
+					)::JSONB -> 0 ->> 'generated_text')
+				ELSE NULL
+			END
+		) STORED;
+		`).Error
+
+		if qtextErr != nil {
+			log.Fatalf("Failed to load questions.question_text_two column %v", qtextErr)
+		}
+	}
+	log.Print("Migrate Start - PageBlock")
+	db.conn.AutoMigrate(&PageBlock{})
+
+	pageBlockSummaryTriggerErr := db.conn.Exec(`
+
+	CREATE OR REPLACE FUNCTION update_page_block_summary() RETURNS TRIGGER AS $$
+	BEGIN
+		IF NEW.content IS NOT NULL AND NEW.content <> '' THEN
+			NEW.summary := pgml.transform(
+				task => '{
+					"task": "summarization",
+					"model": "sshleifer/distilbart-cnn-12-6"
+				}'::JSONB, 
+				inputs => ARRAY[ NEW.content ]
+			);
+		ELSE
+			NEW.summary := NULL;
+		END IF;
+		RETURN NEW;
+	END;
+	$$ LANGUAGE plpgsql;
+	`).Error
+
+	if pageBlockSummaryTriggerErr != nil {
+		log.Fatalf("Failed CREATE OR REPLACE FUNCTION update_page_block_summary() %v", pageBlockSummaryTriggerErr)
+	}
+
+	pageBlockSummaryTriggerAddErr := db.conn.Exec(`
+			CREATE OR REPLACE TRIGGER update_page_block_summary
+			BEFORE INSERT OR UPDATE ON page_blocks
+			FOR EACH ROW EXECUTE FUNCTION update_page_block_summary();
+		`).Error
+
+	if pageBlockSummaryTriggerAddErr != nil {
+		log.Fatalf("CREATE OR REPLACE TRIGGER update_page_block_summary %v", pageBlockSummaryTriggerAddErr)
+	}
+
+	/*
+		,
+								args => '{
+									"min_length" : 3,
+									"max_length" : 15
+								}'::JSONB
+	*/
+
+	log.Print("Migrate Start - ImprovedQuestion")
+	db.conn.AutoMigrate(&ImprovedQuestion{})
+	log.Print("Migrate ALL END")
+
+	// Check if the index exists
+	var count int64
+	db.conn.Raw(`
+        SELECT COUNT(*) 
+        FROM pg_indexes 
+        AND indexname = ?
+	`, "pgml.page", "website_url").Scan(&count)
+
+	if count == 0 {
+		db.conn.Exec("CREATE INDEX CONCURRENTLY website_url ON pgml.page (url)")
+	}
+
+	/*
+			DO $$
+
+		--	BEGIN
+		--		IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page' AND column_name='embedding') THEN
+		--			ALTER TABLE pgml.page DROP COLUMN embedding;
+		--		END IF;
+		--	END $$;
+
+
+	*/
+
+	pageBlockEmbeddingErr := db.conn.Exec(`
+	-- Add the new generated embedding column if it doesn't exist
+	DO $$ 
+	BEGIN
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='page_blocks' AND column_name='embedding') THEN
+			ALTER TABLE page_blocks 
+			ADD COLUMN embedding vector(384) GENERATED ALWAYS AS 
+			(
+				CASE
+					WHEN content IS NOT NULL AND CONTENT <> '' THEN 
+						pgml.embed(transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
+							text => content, 
+							kwargs => '{"device": "cpu"}'::jsonb
+						)
+					ELSE NULL
+				END
+			) STORED;
+		END IF;
+	END $$;
+	`).Error
+
+	if pageBlockEmbeddingErr != nil {
+		log.Fatalf("Failed to load pageBlockEmbeddingErr %v", pageBlockEmbeddingErr)
 	}
 
 	log.Print("Migrate End - Index")
@@ -353,10 +503,10 @@ func (db *DB) DeleteWebsite(websiteId uint) error {
 
 func (db *DB) BatchInsertQuestions(questions []Question) error {
 	// Perform the batch insert
-	return db.conn.Create(&questions).Error
+	return db.conn.Omit("QuestionText", "QuestionTextTwo").Create(&questions).Error
 }
 
-func (db *DB) GetQuestions(websiteId uint, pageID uint, page int, limit int) ([]Question, error) {
+func (db *DB) GetQuestions(websiteId uint, pageID uint, pageBlockId uint, page int, limit int) ([]Question, error) {
 	if limit <= 0 {
 		return nil, errors.New("invalid limit value")
 	}
@@ -366,7 +516,7 @@ func (db *DB) GetQuestions(websiteId uint, pageID uint, page int, limit int) ([]
 	offset := (page - 1) * limit
 
 	var questions []Question
-	err := db.conn.Raw("SELECT * FROM questions WHERE website_id = ? LIMIT ? OFFSET ?", websiteId, limit, offset).Scan(&questions).Error
+	err := db.conn.Raw("SELECT * FROM questions WHERE website_id = ? AND page_block_id = ? LIMIT ? OFFSET ?", websiteId, pageBlockId, limit, offset).Scan(&questions).Error
 
 	log.Printf("questions: %v", questions)
 	return questions, err
@@ -572,10 +722,39 @@ func (db *DB) GetPage(websiteId uint, pageId uint) (*Page, error) {
 	return &page, nil
 }
 
+func (db *DB) GetPageBlock(pageBlockId uint) (*PageBlock, error) {
+	var pageBlock PageBlock
+	result := db.conn.Where("id = ?", pageBlockId).First(&pageBlock)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &pageBlock, nil
+}
+
 func (db *DB) InsertChat(chat Chat) error {
 	log.Printf("Saving chat %v", chat)
 	chat.DateCreated = time.Now()
 	result := db.conn.Create(&chat) //.Clauses(clause.OnConflict{UpdateAll: true})
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) GetImprovedQuestions(websiteId uint, pageId uint, pageBlockId uint) ([]ImprovedQuestion, error) {
+	var questions []ImprovedQuestion
+	err := db.conn.Where("website_id = ? AND page_id = ? AND page_block_id = ?", websiteId, pageId, pageBlockId).Find(&questions).Error
+	if err != nil {
+		return nil, err
+	}
+	return questions, nil
+}
+
+func (db *DB) InsertImprovedQuestion(q ImprovedQuestion) error {
+	log.Printf("Saving ImprovedQuestion %v", q)
+	q.DateCreated = time.Now()
+	result := db.conn.Create(&q) //.Clauses(clause.OnConflict{UpdateAll: true})
 	if result.Error != nil {
 		log.Print(result.Error)
 		return result.Error
@@ -635,10 +814,16 @@ func (qr PageQueryResult) String() string {
 	return qr.Content + " Rank:" + strconv.FormatFloat(qr.Rank, 'f', -1, 64)
 }
 
-func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, error) {
+func (db *DB) QueryWebsite(question string, websiteId uint, pageIds []uint) ([]PageQueryResult, error) {
 	var queryResults []PageQueryResult
 
-	rawSQL := `
+	var pageIdStrs []string
+	for _, id := range pageIds {
+		pageIdStrs = append(pageIdStrs, strconv.Itoa(int(id)))
+	}
+	pageIdsCSV := strings.Join(pageIdStrs, ",")
+
+	rawSQL := fmt.Sprintf(`
     WITH request AS (
 		SELECT pgml.embed(
 			transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
@@ -647,16 +832,20 @@ func (db *DB) QueryWebsite(question string, websiteId uint) ([]PageQueryResult, 
 		)::vector(384) AS embedding
 	  )
 	  SELECT
-		id,
-		content,
-		title,
-		url,
-		keywords,
-		embedding <=> (SELECT embedding FROM request) AS cosine_similarity
-	  FROM pgml.page
+	  	p.tidy_title,
+		p.URL,
+		pb.id,
+		pb.content,
+		pb.summary,
+		p.keywords,
+		pb.embedding <=> (SELECT embedding FROM request) AS block_cosine_similarity
+		p.embedding <=> (SELECT embedding FROM request) AS page_cosine_similarity
+	  FROM pgml.page_blocks pb
+	  INNER JOIN pgml.page p ON p.id = pb.page_id
 	  WHERE website_id = $2
-	  ORDER BY cosine_similarity ASC
-	  LIMIT 3`
+	  AND (p.id IN (%s) OR LENGTH(%s) == 0)
+	  ORDER BY page_cosine_similarity, cosine_similarity ASC
+	  LIMIT 3`, pageIdsCSV, pageIdsCSV)
 
 	rows, err := db.conn.Raw(rawSQL, question, websiteId).Rows() // Here we get the raw rows
 	if err != nil {

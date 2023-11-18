@@ -46,6 +46,33 @@ func doubleEscape(str string) templ.Component {
 
 }
 
+func splitQuestion(questionAndAnswer string, questionMode bool) string {
+	splitString := strings.Split(questionAndAnswer, "?")
+
+	if len(questionAndAnswer) == 0 {
+		log.Printf("Error split question, empty question", questionAndAnswer)
+		return ""
+	}
+	if len(splitString) == 1 {
+		log.Printf("Error split question, empty question", questionAndAnswer)
+		return questionAndAnswer
+	}
+	if len(splitString) == 2 {
+		if questionMode {
+			return splitString[0] + "?"
+		} else {
+			return splitString[1]
+		}
+	}
+
+	log.Fatalf("Multiple ? in the question?!?: \n%s", questionAndAnswer)
+	panic("woah")
+}
+
+func (w Website) getTidyTitle(pageTitle string) string {
+	return strings.Replace(pageTitle, w.TitleReplace, "", -1)
+}
+
 func splitIntoBlocks(content string) []string {
 	// Regular expression to match two or more newline characters, possibly surrounded by other whitespace
 	re := regexp.MustCompile(`\.\s*\n\s*\n+`)

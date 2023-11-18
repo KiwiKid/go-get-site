@@ -6,7 +6,7 @@ templ task(siteUrl string) {
 		<body>
 			<div hx-get={ siteUrl } hx-trigger="load">
 				{ siteUrl }
-				<img alt="Result loading..." class="htmx-indicator" width="150" src="/img/bars.svg"/>
+				<span alt="Result loading..." class="htmx-indicator" width="150">Loading</span>
 			</div>
 		</body>
 	</html>

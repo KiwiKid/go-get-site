@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func newQuestions(website Website, pageId uint) templ.Component {
+func newQuestions(websiteId uint, pageId uint, pageBlockID uint, questionContent string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -26,20 +26,38 @@ func newQuestions(website Website, pageId uint) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div><form hx-post=\"")
+		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white\"><form hx-post=\"")
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(templ.EscapeString(website.websiteURLWithPostFixAndPageId("pages/question", pageId)))
+		_, err = templBuffer.WriteString(templ.EscapeString(websitePageBlockQuestionURL(websiteId, pageId, pageBlockID)))
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("\"><label for=\"relevantContent&gt;&lt;\" label></label><input type=\"text\" name=\"relevantContent\" id=\"relevantContent\"><button>")
+		_, err = templBuffer.WriteString("\" hx-swap=\"#page-block-container\" class=\"space-y-4\"><div><label for=\"relevantContent\" class=\"block text-sm font-medium text-gray-700\">")
 		if err != nil {
 			return err
 		}
-		var_2 := `Get Questions`
+		var_2 := `Raw Source Content`
 		_, err = templBuffer.WriteString(var_2)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><textarea type=\"text\" rows=\"5\" cols=\"80\" name=\"relevantContent\" id=\"relevantContent\">")
+		if err != nil {
+			return err
+		}
+		var var_3 string = questionContent
+		_, err = templBuffer.WriteString(templ.EscapeString(var_3))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</textarea></div><button type=\"submit\" class=\"inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500\">")
+		if err != nil {
+			return err
+		}
+		var_4 := `Make Question`
+		_, err = templBuffer.WriteString(var_4)
 		if err != nil {
 			return err
 		}
@@ -54,7 +72,7 @@ func newQuestions(website Website, pageId uint) templ.Component {
 	})
 }
 
-func questionResult(website Website, pageId uint, questions []Question, raw string) templ.Component {
+func questionResult(websiteId uint, pageId uint, pageBlockId uint, questions []Question, pageBlockContent string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -62,100 +80,101 @@ func questionResult(website Website, pageId uint, questions []Question, raw stri
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_3 := templ.GetChildren(ctx)
-		if var_3 == nil {
-			var_3 = templ.NopComponent
+		var_5 := templ.GetChildren(ctx)
+		if var_5 == nil {
+			var_5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div hx-swap=\"outerHTML\">")
+		_, err = templBuffer.WriteString("<div class=\"bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4\" hx-swap=\"outerHTML\">")
 		if err != nil {
 			return err
 		}
-		err = newQuestions(website, pageId).Render(ctx, templBuffer)
+		err = newQuestions(websiteId, pageId, pageBlockId, pageBlockContent).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<h1>")
+		_, err = templBuffer.WriteString("<h1 class=\"text-2xl font-bold text-gray-800 mb-4\">")
 		if err != nil {
 			return err
 		}
-		var_4 := `questions: `
-		_, err = templBuffer.WriteString(var_4)
+		var_6 := `(`
+		_, err = templBuffer.WriteString(var_6)
 		if err != nil {
 			return err
 		}
-		var var_5 string = strconv.Itoa(len(questions))
-		_, err = templBuffer.WriteString(templ.EscapeString(var_5))
+		var var_7 string = strconv.Itoa(len(questions))
+		_, err = templBuffer.WriteString(templ.EscapeString(var_7))
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</h1>")
+		_, err = templBuffer.WriteString(" ")
+		if err != nil {
+			return err
+		}
+		var_8 := `Existing Questions)`
+		_, err = templBuffer.WriteString(var_8)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</h1><div class=\"flex\">")
 		if err != nil {
 			return err
 		}
 		for _, q := range questions {
-			_, err = templBuffer.WriteString("<h1>")
+			_, err = templBuffer.WriteString("<div class=\"w-1/2 border border-2\"><h3 class=\"text-xl font-semibold text-gray-700\">")
 			if err != nil {
 				return err
 			}
-			var_6 := `QuestionText:`
-			_, err = templBuffer.WriteString(var_6)
+			var_9 := `Question Text: `
+			_, err = templBuffer.WriteString(var_9)
 			if err != nil {
 				return err
 			}
-			var var_7 string = strconv.Itoa(len(q.QuestionText))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_7))
+			var var_10 string = q.QuestionText
+			_, err = templBuffer.WriteString(templ.EscapeString(var_10))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString(" ")
+			_, err = templBuffer.WriteString("</h3><details class=\"p-5 border border-gray-200 rounded-lg shadow-sm\"><summary class=\"cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900\">")
 			if err != nil {
 				return err
 			}
-			var_8 := `- `
-			_, err = templBuffer.WriteString(var_8)
+			var_11 := `Improve`
+			_, err = templBuffer.WriteString(var_11)
 			if err != nil {
 				return err
 			}
-			var var_9 string = raw
-			_, err = templBuffer.WriteString(templ.EscapeString(var_9))
+			_, err = templBuffer.WriteString("</summary>")
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</h1> <h1>")
+			err = newImprovedQuestion(websiteId, pageId, pageBlockId, q).Render(ctx, templBuffer)
 			if err != nil {
 				return err
 			}
-			var_10 := `RelevantContent:`
-			_, err = templBuffer.WriteString(var_10)
+			_, err = templBuffer.WriteString("<div hx-trigger=\"intersect once\" hx-get=\"")
 			if err != nil {
 				return err
 			}
-			var var_11 string = strconv.Itoa(len(q.RelevantContent))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_11))
+			_, err = templBuffer.WriteString(templ.EscapeString(questionImprovement(websiteId, pageId, pageBlockId, q.ID, "")))
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString(" ")
+			_, err = templBuffer.WriteString("\">")
 			if err != nil {
 				return err
 			}
-			var_12 := `- `
+			var_12 := `Loading improvements`
 			_, err = templBuffer.WriteString(var_12)
 			if err != nil {
 				return err
 			}
-			var var_13 string = q.RelevantContent
-			_, err = templBuffer.WriteString(templ.EscapeString(var_13))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</h1>")
+			_, err = templBuffer.WriteString("</div></details></div>")
 			if err != nil {
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString("</div>")
+		_, err = templBuffer.WriteString("</div></div>")
 		if err != nil {
 			return err
 		}
@@ -166,7 +185,7 @@ func questionResult(website Website, pageId uint, questions []Question, raw stri
 	})
 }
 
-func questionsFailedResult(website Website, pageId uint, errorMsg string) templ.Component {
+func questionsFailedResult(websiteId uint, pageId uint, pageBlockID uint, errorMsg string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -174,16 +193,16 @@ func questionsFailedResult(website Website, pageId uint, errorMsg string) templ.
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_14 := templ.GetChildren(ctx)
-		if var_14 == nil {
-			var_14 = templ.NopComponent
+		var_13 := templ.GetChildren(ctx)
+		if var_13 == nil {
+			var_13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div hx-swap=\"outerHTML\">")
 		if err != nil {
 			return err
 		}
-		err = newQuestions(website, pageId).Render(ctx, templBuffer)
+		err = newQuestions(websiteId, pageId, pageBlockID, "").Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -191,8 +210,8 @@ func questionsFailedResult(website Website, pageId uint, errorMsg string) templ.
 		if err != nil {
 			return err
 		}
-		var var_15 string = errorMsg
-		_, err = templBuffer.WriteString(templ.EscapeString(var_15))
+		var var_14 string = errorMsg
+		_, err = templBuffer.WriteString(templ.EscapeString(var_14))
 		if err != nil {
 			return err
 		}
