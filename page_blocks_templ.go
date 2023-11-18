@@ -148,8 +148,7 @@ func loadPageBlocks(url string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_10 := `Loading...`
-		_, err = templBuffer.WriteString(var_10)
+		err = spinner().Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -172,9 +171,9 @@ func deletePageBlocks(url string) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_11 := templ.GetChildren(ctx)
-		if var_11 == nil {
-			var_11 = templ.NopComponent
+		var_10 := templ.GetChildren(ctx)
+		if var_10 == nil {
+			var_10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div><button hx-target=\"#page-block-container\" class=\"px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none focus:ring\" hx-delete=\"")
@@ -189,8 +188,8 @@ func deletePageBlocks(url string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_12 := `Delete`
-		_, err = templBuffer.WriteString(var_12)
+		var_11 := `Delete`
+		_, err = templBuffer.WriteString(var_11)
 		if err != nil {
 			return err
 		}
@@ -198,8 +197,7 @@ func deletePageBlocks(url string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_13 := `Loading...`
-		_, err = templBuffer.WriteString(var_13)
+		err = spinner().Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -207,8 +205,8 @@ func deletePageBlocks(url string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_14 := `Deleting...`
-		_, err = templBuffer.WriteString(var_14)
+		var_12 := `Deleting...`
+		_, err = templBuffer.WriteString(var_12)
 		if err != nil {
 			return err
 		}

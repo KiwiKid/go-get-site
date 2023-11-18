@@ -353,40 +353,40 @@ func (db *DB) Migrate() {
 	}
 	log.Print("Migrate Start - PageBlock")
 	db.conn.AutoMigrate(&PageBlock{})
+	/*
+		pageBlockSummaryTriggerErr := db.conn.Exec(`
 
-	pageBlockSummaryTriggerErr := db.conn.Exec(`
-
-	CREATE OR REPLACE FUNCTION update_page_block_summary() RETURNS TRIGGER AS $$
-	BEGIN
-		IF NEW.content IS NOT NULL AND NEW.content <> '' THEN
-			NEW.summary := pgml.transform(
-				task => '{
-					"task": "summarization",
-					"model": "sshleifer/distilbart-cnn-12-6"
-				}'::JSONB, 
-				inputs => ARRAY[ NEW.content ]
-			);
-		ELSE
-			NEW.summary := NULL;
-		END IF;
-		RETURN NEW;
-	END;
-	$$ LANGUAGE plpgsql;
-	`).Error
-
-	if pageBlockSummaryTriggerErr != nil {
-		log.Fatalf("Failed CREATE OR REPLACE FUNCTION update_page_block_summary() %v", pageBlockSummaryTriggerErr)
-	}
-
-	pageBlockSummaryTriggerAddErr := db.conn.Exec(`
-			CREATE OR REPLACE TRIGGER update_page_block_summary
-			BEFORE INSERT OR UPDATE ON page_blocks
-			FOR EACH ROW EXECUTE FUNCTION update_page_block_summary();
+		CREATE OR REPLACE FUNCTION update_page_block_summary() RETURNS TRIGGER AS $$
+		BEGIN
+			IF NEW.content IS NOT NULL AND NEW.content <> '' THEN
+				NEW.summary := pgml.transform(
+					task => '{
+						"task": "summarization",
+						"model": "sshleifer/distilbart-cnn-12-6"
+					}'::JSONB,
+					inputs => ARRAY[ NEW.content ]
+				);
+			ELSE
+				NEW.summary := NULL;
+			END IF;
+			RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql;
 		`).Error
 
-	if pageBlockSummaryTriggerAddErr != nil {
-		log.Fatalf("CREATE OR REPLACE TRIGGER update_page_block_summary %v", pageBlockSummaryTriggerAddErr)
-	}
+		if pageBlockSummaryTriggerErr != nil {
+			log.Fatalf("Failed CREATE OR REPLACE FUNCTION update_page_block_summary() %v", pageBlockSummaryTriggerErr)
+		}
+
+		pageBlockSummaryTriggerAddErr := db.conn.Exec(`
+				CREATE OR REPLACE TRIGGER update_page_block_summary
+				BEFORE INSERT OR UPDATE ON page_blocks
+				FOR EACH ROW EXECUTE FUNCTION update_page_block_summary();
+			`).Error
+
+		if pageBlockSummaryTriggerAddErr != nil {
+			log.Fatalf("CREATE OR REPLACE TRIGGER update_page_block_summary %v", pageBlockSummaryTriggerAddErr)
+		}*/
 
 	/*
 		,

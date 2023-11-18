@@ -1,18 +1,18 @@
 package main
 
 templ spinner() {
-    <style type="text/css">
+	<style type="text/css">
         @keyframes spin {
             0% { 
-                transform: rotate("0deg");
+                transform: rotate(0deg);
              }
             100% { 
-                transform: rotate("360deg");
+                transform: rotate(360deg);
                  }
         }
 
         .spinner {
-            animation: "spin 1s linear infinite";
+            animation: spin 1s linear infinite;
         }
     </style>
 	<svg class="spinner w-16 h-16 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">

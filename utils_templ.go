@@ -29,15 +29,15 @@ func spinner() templ.Component {
 		var_2 := `
         @keyframes spin {
             0% { 
-                transform: rotate("0deg");
+                transform: rotate(0deg);
              }
             100% { 
-                transform: rotate("360deg");
+                transform: rotate(360deg);
                  }
         }
 
         .spinner {
-            animation: "spin 1s linear infinite";
+            animation: spin 1s linear infinite;
         }
     `
 		_, err = templBuffer.WriteString(var_2)
