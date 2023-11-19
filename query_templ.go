@@ -358,7 +358,7 @@ func queryResult(pageQueryResults []PageQueryResult, websiteId uint, message str
 			return err
 		}
 		for _, queryRes := range pageQueryResults {
-			_, err = templBuffer.WriteString("<div class=\"p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50 max-h-32\"><a href=\"")
+			_, err = templBuffer.WriteString("<div class=\"p-4 flex mb-2 border-b border-gray-200 hover:bg-gray-50 max-h-32 m-4\"><a href=\"")
 			if err != nil {
 				return err
 			}

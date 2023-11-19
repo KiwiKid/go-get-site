@@ -131,6 +131,35 @@ func (Website) TableName() string {
 	return "pgml.website"
 }
 
+type AttributeModel struct {
+	ID   uint   `gorm:"primary_key"`
+	Name string `gorm:"type:text"`
+}
+
+type AttributeSet struct {
+	ID          uint `gorm:"primary_key"`
+	Name        string
+	DateCreated time.Time   `gorm:"type:timestamp"`
+	Attributes  []Attribute `gorm:"foreignkey:AttributeSetID"`
+}
+
+type Attribute struct {
+	ID                 uint   `gorm:"primary_key"`
+	AttributeSeedQuery string `gorm:"type:text"`
+	AttributeModelID   uint   `gorm:"index"`
+	AttributeSetID     uint   `gorm:"index"`
+}
+
+type AttributeResult struct {
+	ID              uint      `gorm:"primary_key"`
+	PageID          uint      `gorm:"index"`
+	PageBlockID     uint      `gorm:"index"`
+	WebsiteID       uint      `gorm:"index"`
+	AttributeID     uint      `gorm:"index"`
+	AttributeResult string    `gorm:"type:text"`
+	DateCreated     time.Time `gorm:"type:timestamp"`
+}
+
 /*
 type Embedding struct {
 	ID     uint   `gorm:"primary_key"`
@@ -195,6 +224,10 @@ func (w *Website) websiteURLWithPagesIdAndPostFix(pageId uint, postfix string) s
 
 func (w *Website) websitePagesURL() string {
 	return fmt.Sprintf("/sites/%d/pages", w.ID)
+}
+
+func attributeSetURL(attributeSetId uint) string {
+	return fmt.Sprintf("/aset/%d", attributeSetId)
 }
 
 func (w *Website) websiteNavigateURL() string {
@@ -397,6 +430,13 @@ func (db *DB) Migrate() {
 
 	log.Print("Migrate Start - ImprovedQuestion")
 	db.conn.AutoMigrate(&ImprovedQuestion{})
+
+	log.Print("Migrate Start - Attribute")
+	db.conn.AutoMigrate(&AttributeSet{}, &AttributeModel{})
+	db.conn.AutoMigrate(&Attribute{}, &AttributeResult{})
+	log.Print("Migrate Start - Question")
+	db.conn.AutoMigrate(&Question{})
+
 	log.Print("Migrate ALL END")
 
 	// Check if the index exists
@@ -404,7 +444,7 @@ func (db *DB) Migrate() {
 	db.conn.Raw(`
         SELECT COUNT(*) 
         FROM pg_indexes 
-        AND indexname = ?
+        WHERE indexname = ?
 	`, "pgml.page", "website_url").Scan(&count)
 
 	if count == 0 {
@@ -903,4 +943,122 @@ func (db *DB) CountLinksAndPages(websiteId uint) (*LinkCountResult, error) {
 		TotalLinks:     int(totalLinks),
 		LinksHavePages: int(linksWithPages),
 	}, nil
+}
+
+// For AttributeModel
+func (db *DB) CreateAttributeModel(m AttributeModel) error {
+	log.Printf("Creating AttributeModel %v", m)
+	result := db.conn.Create(&m)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) DeleteAttributeModel(id uint) error {
+	result := db.conn.Delete(&AttributeModel{}, id)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) ListAttributeModels() ([]AttributeModel, error) {
+	var models []AttributeModel
+	err := db.conn.Find(&models).Error
+	if err != nil {
+		return nil, err
+	}
+	return models, nil
+}
+
+// For AttributeSet
+func (db *DB) CreateAttributeSet(s AttributeSet) (*AttributeSet, error) {
+	log.Printf("Creating AttributeSet %v", s)
+	s.DateCreated = time.Now()
+	result := db.conn.Create(&s)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return nil, result.Error
+	}
+	return &s, nil
+}
+
+func (db *DB) DeleteAttributeSet(id uint) error {
+	result := db.conn.Delete(&AttributeSet{}, id)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) ListAllAttributeSets() ([]AttributeSet, error) {
+	var sets []AttributeSet
+	err := db.conn.Preload("Attributes").Find(&sets).Error
+	if err != nil {
+		return nil, err
+	}
+	return sets, nil
+}
+
+func (db *DB) ListAttributes() ([]Attribute, error) {
+	var attributes []Attribute
+	err := db.conn.Find(&attributes).Error
+	if err != nil {
+		return nil, err
+	}
+	return attributes, nil
+}
+
+// For AttributeResult
+func (db *DB) CreateAttributeResult(r AttributeResult) error {
+	log.Printf("Creating AttributeResult %v", r)
+	r.DateCreated = time.Now()
+	result := db.conn.Create(&r)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) DeleteAttributeResult(id uint) error {
+	result := db.conn.Delete(&AttributeResult{}, id)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) ListAttributeResults() ([]AttributeResult, error) {
+	var results []AttributeResult
+	err := db.conn.Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// For Attribute
+func (db *DB) CreateAttribute(a Attribute) error {
+	log.Printf("Creating Attribute %v", a)
+	result := db.conn.Create(&a)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) DeleteAttribute(id uint) error {
+	result := db.conn.Delete(&Attribute{}, id)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
 }

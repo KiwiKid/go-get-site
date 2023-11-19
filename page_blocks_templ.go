@@ -48,7 +48,7 @@ func pageBlocks(websiteId uint, pageId uint, blocks []PageBlock) templ.Component
 				if err != nil {
 					return err
 				}
-				var_3 := `Content-Block -`
+				var_3 := `Block -`
 				_, err = templBuffer.WriteString(var_3)
 				if err != nil {
 					return err

@@ -75,6 +75,12 @@ func main() {
 	r.Handle("/search", presentQuery()).Methods("GET", "POST")
 	r.Handle("/search/{queryId}", presentQuery()).Methods("GET", "POST")
 
+	//r.Handle("/attributes/models", presentAttributeModels())
+	r.Handle("/aset", presentAttributeSet()).Methods("GET", "POST")
+	r.Handle("/aset/{attributeSetId}", presentAttributeSet()).Methods("GET", "POST")
+	r.Handle("/attribute", presentAttribute()).Methods("GET", "POST")
+	//r.Handle("/attributes/{attributeSetId}/attribute/{attributeId}", presentAttribute())
+
 	r.Handle("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}/questions", presentQuestion()).Methods("GET", "POST")
 
 	r.Handle("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}/questions/{questionId}/improved", presentImprovedQuestions()).Methods("GET", "POST")
@@ -846,7 +852,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 	if err != nil {
 		panic(err)
 	}
-
+	var message string
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		websiteIdStr := vars["websiteId"]
@@ -935,6 +941,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			if pagesProcessed == nil && processErr == nil {
 				log.Printf("handlePages:No more pages to process:%v", processAll)
 				dripLoad = false
+				message = "All Page Processing Complete"
 			}
 
 			w.WriteHeader(http.StatusCreated) // 201 Created status
@@ -983,7 +990,19 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			*count,
 			thisPageUrl,
 			prevPageUrl,
-			nextPageUrl, addedPagesSet, percentage, viewPageSize, processPageSize, dripLoad, dripLoadCount, dripLoadFreqMin, dripLoadStr, processAll, skipNewLinkInsert, ignoreWarnings)
+			nextPageUrl,
+			addedPagesSet,
+			percentage,
+			viewPageSize,
+			processPageSize,
+			dripLoad,
+			dripLoadCount,
+			dripLoadFreqMin,
+			dripLoadStr,
+			processAll,
+			skipNewLinkInsert,
+			ignoreWarnings,
+			message)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
@@ -1346,5 +1365,119 @@ func presentLinkCount() http.HandlerFunc {
 		pagesComp := process(*count, *website)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
+	}
+}
+
+func presentAttribute() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var message string
+
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+		switch r.Method {
+		case http.MethodPost:
+
+			vars := mux.Vars(r)
+			attributeSetIdStr := vars["attributeSetId"]
+
+			attributeSetId, attributeSetErr := stringToUint(attributeSetIdStr)
+			if attributeSetErr != nil {
+				panic(attributeSetErr)
+			}
+
+			attributeModelIDStr := r.FormValue("attributeModelID")
+			attributeModelID, attributeSetErr := stringToUint(attributeModelIDStr)
+			if attributeSetErr != nil {
+				panic(attributeSetErr)
+			}
+
+			attributeSeedQuery := r.FormValue("attributeSeedQuery")
+			createAttributeError := db.CreateAttribute(Attribute{
+				AttributeSeedQuery: attributeSeedQuery,
+				AttributeModelID:   attributeModelID,
+				AttributeSetID:     attributeSetId,
+			})
+
+			if createAttributeError != nil {
+				panic(createAttributeError.Error)
+			}
+
+		}
+
+		attrs, modelsErr := db.ListAttributes()
+		if modelsErr != nil {
+			log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
+			return
+		}
+
+		attrComp := attributes(attrs, message)
+
+		templ.Handler(attrComp).ServeHTTP(w, r)
+	}
+
+}
+
+func presentAttributeSet() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var message string
+
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+		switch r.Method {
+		case http.MethodPost:
+			{
+				vars := mux.Vars(r)
+				attributeSetIdStr := vars["attributeSetId"]
+
+				if len(attributeSetIdStr) > 0 {
+
+				} else {
+					name := r.FormValue("name")
+					newSet, newSetErr := db.CreateAttributeSet(AttributeSet{
+						Name: name,
+					})
+
+					if newSetErr != nil {
+						panic(newSetErr.Error)
+					}
+
+					message = fmt.Sprintf("New set created: %s", newSet.Name)
+				}
+			}
+		case http.MethodGet:
+			{
+				db, err := NewDB()
+				if err != nil {
+					panic(err)
+				}
+
+				sets, modelsErr := db.ListAllAttributeSets()
+				if modelsErr != nil {
+					log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
+					return
+				}
+
+				attributeModels, getModelsErr := db.ListAttributeModels()
+				if getModelsErr != nil {
+					log.Printf("Error ListAllAttributeSets link: %v", getModelsErr)
+					return
+				}
+
+				setListComp := listAttributeSets(sets, attributeModels, message)
+
+				templ.Handler(setListComp).ServeHTTP(w, r)
+			}
+		default:
+			{
+				panic("Not supported")
+			}
+
+		}
 	}
 }

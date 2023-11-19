@@ -2,210 +2,220 @@ package main
 
 import "strconv"
 
-templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, viewPageSize int,  processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool) {
+templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, viewPageSize int,  processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool, message string) {
 	<html>
 		@header(website.BaseUrl)
 		<body class="bg-gray-100" id="container">
 			@nav(website.BaseUrl)
 			<div class="container mx-auto mt-12 p-4">
-				<a href={ templ.URL(website.websiteURL()) } class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Refresh</a>
-				@editWebsite(website)
-				<h1 class="text-4xl font-bold mb-6">PAGES</h1>
-				if dripLoad {
-					<h1 class="bg-green-700 w-full px-3 py-2">Drip Load Mode (Run { dripLoadStr } - run #<span>{ strconv.Itoa(dripLoadCount)  }</span>)</h1>
-				}
-				@progressBar(progress)
-				if len(addedPagesSet) > 0 {
-					<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
-						<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">{ strconv.Itoa(len(addedPagesSet)) } new pages added - 				<div>@process(count, website)</div></summary>
-						<ul>
-							for link := range addedPagesSet {
-								<li class="bg-green-400">{ link }</li>
-							}
-						</ul>
-					</details>
-				} else {
-					<div>No pages added, click "Load more website content" to get started</div>
-				}
-				<form
- 					hx-post={ website.websitePagesURL() }
- 					hx-target="#container"
- 					method="post"
- 					class="space-y-4"
- 					if dripLoad && dripLoadStr != "dripLoadStr" {
-						hx-trigger={ dripLoadStr }
+				<div class="border border-gray-200 rounded-lg shadow-sm">
+					<a href={ templ.URL(website.websiteURL()) } class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">Refresh</a>
+					@editWebsite(website)
+					<h1 class="text-4xl font-bold mb-6">PAGES</h1>
+					if dripLoad {
+						<h1 class="bg-green-700 w-full px-3 py-2">Drip Load Mode (Run { dripLoadStr } - run #<span>{ strconv.Itoa(dripLoadCount)  }</span>)</h1>
 					}
-				>
-					<span class="htmx-indicator">@spinner()</span>
-					<button class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">
-						if dripLoad {
-							<div class="flex flex-col items-center">
-								<span>[AUTO-CLICK]</span>
-								<span>{ dripLoadStr }</span>
-								<span>(or click this to update settings/load now)</span>
-							</div>
-						} else {
-							Load more website content
+					@progressBar(progress)
+					if len(addedPagesSet) > 0 {
+						<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
+							<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">{ strconv.Itoa(len(addedPagesSet)) } new pages added - 				<div>@process(count, website)</div></summary>
+							<ul>
+								for link := range addedPagesSet {
+									<li class="bg-green-400">{ link }</li>
+								}
+							</ul>
+						</details>
+					} else {
+						<div>No pages added, click "Load more website content" to get started</div>
+					}
+					<form
+ 						hx-post={ website.websitePagesURL() }
+ 						hx-target="#container"
+ 						method="post"
+ 						class="space-y-4"
+ 						if dripLoad && dripLoadStr != "dripLoadStr" {
+							hx-trigger={ dripLoadStr }
 						}
-					</button>
-					<div class="flex items-center space-x-2" title="when selected, the auto-load will keep pressing the button above">
-						<label for="dripLoad" class="text-gray-700">Auto Load</label>
-						<input
- 							type="checkbox"
- 							name="dripLoad"
- 							id="dripLoad"
- 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
- 							if dripLoad {
-								checked="checked"
+					>
+						if len(message) > 0 {
+							<h1>{ message }</h1>
+						}
+						<span class="htmx-indicator">@spinner()</span>
+						<button class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:ring focus:ring-opacity-50 focus:ring-blue-300 focus:border-blue-300">
+							if dripLoad {
+								<div class="flex flex-col items-center">
+									<span>[AUTO-CLICK]</span>
+									@spinner()
+									<span>{ dripLoadStr }</span>
+									<span>(or click this to update settings/load now)</span>
+								</div>
+							} else {
+								Load more website content
 							}
-						/>
-						<div class="flex items-center space-x-2" title="How often a set of pages will be loaded">
-							<label for="dripLoadFreqMin" class="text-gray-700">({ dripLoadStr })</label>
-							<input type="number" name="dripLoadFreqMin" value={ strconv.Itoa(dripLoadFreqMin) }/>
-						</div>
-						[Run#:
-						<input type="number" name="dripLoadCount" value={ strconv.Itoa(dripLoadCount) }/>
-						]
-					</div>
-					<div class="flex items-center space-x-2" title="when checked, the existing page status and content will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
-						<input
- 							type="checkbox"
- 							name="processAll"
- 							id="processAll"
- 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
- 							if processAll {
-								checked="checked"
-							}
-						/>
-						<label for="processAll" class="text-gray-700">Ignore Status/Existing Content</label>
-					</div>
-					<div class="flex items-center space-x-2" title="when checked, the existing page errors will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
-						<input
- 							type="checkbox"
- 							name="ignoreWarnings"
- 							id="ignoreWarnings"
- 							class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
- 							if ignoreWarnings {
-								checked="checked"
-							}
-						/>
-						<label for="ignoreWarnings" class="text-gray-700">Ignore Warnings</label>
-					</div>
-					<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
-						<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">advance</summary>
-						<div class="flex items-center space-x-2">
+						</button>
+						<div class="flex items-center space-x-2" title="when selected, the auto-load will keep pressing the button above">
+							<label for="dripLoad" class="text-gray-700">Auto Load</label>
 							<input
  								type="checkbox"
- 								name="skipNewLinkInsert"
- 								id="skipNewLinkInsert"
+ 								name="dripLoad"
+ 								id="dripLoad"
  								class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
- 								if skipNewLinkInsert {
+ 								if dripLoad {
 									checked="checked"
 								}
 							/>
-							<label for="skipNewLinkInsert" class="text-gray-700">Dont save links</label>
+							<div class="flex items-center space-x-2" title="How often a set of pages will be loaded">
+								<label for="dripLoadFreqMin" class="text-gray-700">({ dripLoadStr })</label>
+								<input type="number" name="dripLoadFreqMin" value={ strconv.Itoa(dripLoadFreqMin) }/>
+							</div>
+							[Run#:
+							<input type="number" name="dripLoadCount" value={ strconv.Itoa(dripLoadCount) }/>
+							]
 						</div>
-					</details>
-					<div class="flex items-center space-x-2">
-						<label for="processPageSize" class="text-gray-700">Process Page Cutoff:</label>
-						<select id="processPageSize" name="processPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200">
-							<option
- 								value="1"
- 								if processPageSize == 1 {
-									selected
+						<div class="flex items-center space-x-2" title="when checked, the existing page status and content will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
+							<input
+ 								type="checkbox"
+ 								name="processAll"
+ 								id="processAll"
+ 								class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 								if processAll {
+									checked="checked"
 								}
-							>1 new page</option>
-							<option
- 								value="5"
- 								if processPageSize == 5 {
-									selected
+							/>
+							<label for="processAll" class="text-gray-700">Ignore Status/Existing Content</label>
+						</div>
+						<div class="flex items-center space-x-2" title="when checked, the existing page errors will be ignored (similar to &#39;#39;#39ag39&#39;)es&#39;) p&#39;)es&#39;)">
+							<input
+ 								type="checkbox"
+ 								name="ignoreWarnings"
+ 								id="ignoreWarnings"
+ 								class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 								if ignoreWarnings {
+									checked="checked"
 								}
-							>5 new pages</option>
-							<option
- 								value="10"
- 								if processPageSize == 10 {
-									selected
-								}
-							>10 new pages</option>
-							<option
- 								value="25"
- 								if processPageSize == 25 {
-									selected
-								}
-							>25 new pages</option>
-							<option
- 								value="50"
- 								if processPageSize == 50 {
-									selected
-								}
-							>50 new pages</option>
-							<option
- 								value="100"
- 								if processPageSize == 100 {
-									selected
-								}
-							>100 new pages</option>
-							<option
- 								value="1000"
- 								if processPageSize == 1000 {
-									selected
-								}
-							>1000 new pages</option>
-						</select>
-					</div>
-					<div class="flex items-center space-x-2">
-						<label for="viewPageSize" class="text-gray-700">Per Page:</label>
-						<select id="viewPageSize" name="viewPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200">
-							<option
- 								value="1"
- 								if viewPageSize == 1 {
-									selected
-								}
-							>1 page</option>
-							<option
- 								value="5"
- 								if viewPageSize == 5 {
-									selected
-								}
-							>5 pages</option>
-							<option
- 								value="10"
- 								if viewPageSize == 10 {
-									selected
-								}
-							>10 pages</option>
-							<option
- 								value="50"
- 								if viewPageSize == 50 {
-									selected
-								}
-							>50 pages</option>
-							<option
- 								value="100"
- 								if viewPageSize == 100 {
-									selected
-								}
-							>100 pages</option>
-							<option
- 								value="300"
- 								if viewPageSize == 300 {
-									selected
-								}
-							>300 pages</option>
-							<option
- 								value="10000"
- 								if viewPageSize == 10000 {
-									selected
-								}
-							>10000 pages</option>
-						</select>
-					</div>
-				</form>
-				<div class="flex mb-2 font-bold text-sm text-gray-600 border-b-2">
+							/>
+							<label for="ignoreWarnings" class="text-gray-700">Ignore Warnings</label>
+						</div>
+						<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
+							<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">advance</summary>
+							<div class="flex items-center space-x-2">
+								<input
+ 									type="checkbox"
+ 									name="skipNewLinkInsert"
+ 									id="skipNewLinkInsert"
+ 									class="rounded border-gray-300 text-blue-600 focus:border-blue-500 focus:ring focus:ring-blue-200"
+ 									if skipNewLinkInsert {
+										checked="checked"
+									}
+								/>
+								<label for="skipNewLinkInsert" class="text-gray-700">Dont save links</label>
+							</div>
+							<div class="flex items-center space-x-2">
+								<label for="processPageSize" class="text-gray-700">Process Page Cutoff:</label>
+								<select id="processPageSize" name="processPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200" required>
+									<option
+ 										value="1"
+ 										if processPageSize == 1 {
+											selected
+										}
+									>1 new page</option>
+									<option
+ 										value="5"
+ 										if processPageSize == 5 {
+											selected
+										}
+									>5 new pages</option>
+									<option
+ 										value="10"
+ 										if processPageSize == 10 {
+											selected
+										}
+									>10 new pages</option>
+									<option
+ 										value="25"
+ 										if processPageSize == 25 {
+											selected
+										}
+									>25 new pages</option>
+									<option
+ 										value="50"
+ 										if processPageSize == 50 {
+											selected
+										}
+									>50 new pages</option>
+									<option
+ 										value="100"
+ 										if processPageSize == 100 {
+											selected
+										}
+									>100 new pages</option>
+									<option
+ 										value="1000"
+ 										if processPageSize == 1000 {
+											selected
+										}
+									>1000 new pages</option>
+								</select>
+							</div>
+							<div class="flex items-center space-x-2">
+								<label for="viewPageSize" class="text-gray-700">Per Page:</label>
+								<select id="viewPageSize" name="viewPageSize" class="border rounded py-1 px-3 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring focus:ring-blue-200" required>
+									<option
+ 										value="1"
+ 										if viewPageSize == 1 {
+											selected
+										}
+									>1 page</option>
+									<option
+ 										value="5"
+ 										if viewPageSize == 5 {
+											selected
+										}
+									>5 pages</option>
+									<option
+ 										value="10"
+ 										if viewPageSize == 10 {
+											selected
+										}
+									>10 pages</option>
+									<option
+ 										value="50"
+ 										if viewPageSize == 50 {
+											selected
+										}
+									>50 pages</option>
+									<option
+ 										value="100"
+ 										if viewPageSize == 100 {
+											selected
+										}
+									>100 pages</option>
+									<option
+ 										value="300"
+ 										if viewPageSize == 300 {
+											selected
+										}
+									>300 pages</option>
+									<option
+ 										value="10000"
+ 										if viewPageSize == 10000 {
+											selected
+										}
+									>10000 pages</option>
+								</select>
+							</div>
+						</details>
+					</form>
+				</div>
+				<div class="flex mb-2 mt-4 font-bold text-sm text-gray-600 border-b-2">
 					<div class="w-1/4 p-2">Status</div>
 					<div class="w-1/4 p-2">Title</div>
 					<div class="w-1/4 p-2">Content + Links</div>
 					<div class="w-1/3 p-2">URL</div>
+					<div class="w-1/3 p-2">
+						Attribute Set:
+						<a href="/aset">(manage)</a>
+					</div>
 				</div>
 				for _, item := range pages {
 					<div class="flex flex-col mb-2 border-b border-gray-200 hover:bg-gray-50">
@@ -271,7 +281,9 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 								<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
 									<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">Page Blocks </summary>
 									@deletePageBlocks(website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks"))
-									<div id="page-block-container" hx-trigger="intersect once" hx-get={ website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks") }>Loading blocks...</div>
+									<div id="page-block-container" hx-trigger="intersect once" hx-get={ website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks") }>
+										<div class="htmx-indicator">@spinner()</div>
+									</div>
 									@loadPageBlocks( websitePageBlocksURL(website.ID, item.ID))
 								</details>
 							</div>
