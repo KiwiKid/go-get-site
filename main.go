@@ -1438,9 +1438,9 @@ func presentAttributeSet() http.HandlerFunc {
 				if len(attributeSetIdStr) > 0 {
 
 				} else {
-					name := r.FormValue("name")
+					setName := r.FormValue("setName")
 					newSet, newSetErr := db.CreateAttributeSet(AttributeSet{
-						Name: name,
+						Name: setName,
 					})
 
 					if newSetErr != nil {
@@ -1452,26 +1452,7 @@ func presentAttributeSet() http.HandlerFunc {
 			}
 		case http.MethodGet:
 			{
-				db, err := NewDB()
-				if err != nil {
-					panic(err)
-				}
 
-				sets, modelsErr := db.ListAllAttributeSets()
-				if modelsErr != nil {
-					log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
-					return
-				}
-
-				attributeModels, getModelsErr := db.ListAttributeModels()
-				if getModelsErr != nil {
-					log.Printf("Error ListAllAttributeSets link: %v", getModelsErr)
-					return
-				}
-
-				setListComp := listAttributeSets(sets, attributeModels, message)
-
-				templ.Handler(setListComp).ServeHTTP(w, r)
 			}
 		default:
 			{
@@ -1479,5 +1460,27 @@ func presentAttributeSet() http.HandlerFunc {
 			}
 
 		}
+
+		sets, modelsErr := db.ListAllAttributeSets()
+		if modelsErr != nil {
+			log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
+			return
+		}
+
+		attributeModels, getModelsErr := db.ListAttributeModels()
+		if getModelsErr != nil {
+			log.Printf("Error ListAllAttributeSets link: %v", getModelsErr)
+			return
+		}
+
+		attributes, getAttributesErr := db.ListAttributes()
+		if getModelsErr != nil {
+			log.Printf("Error ListAllAttributeSets link: %v", getAttributesErr)
+			return
+		}
+
+		setListComp := listAttributeSets(attributes, sets, attributeModels, message)
+
+		templ.Handler(setListComp).ServeHTTP(w, r)
 	}
 }
