@@ -34,7 +34,7 @@ templ listAttributeSets(attributes []Attribute, attributeSets []AttributeSet, at
 		@header("Attribute Sets")
 		<body>
 			@nav("Attribute Sets")
-			<div class="flex">
+			<div class="flex" id="aset-container">
 				<div>
 					{ message }
 				</div>
@@ -44,6 +44,11 @@ templ listAttributeSets(attributes []Attribute, attributeSets []AttributeSet, at
 				for _, aset := range attributeSets {
 					<div class=" border border-gray-400 rounded-md w-1/4">
 						<h1>{ aset.Name }</h1>
+						Attributes:
+						for _, a := range aset.Attributes {
+							<div>{ a.AISeedQuery }</div>
+							<div>{ a.AITask }</div>
+						}
 					</div>
 				}
 			</div>
@@ -52,32 +57,32 @@ templ listAttributeSets(attributes []Attribute, attributeSets []AttributeSet, at
 }
 
 templ assignAttributeToSet(attributes []Attribute, attributeSets []AttributeSet) {
-    <div class="p-4 shadow rounded-lg bg-white">
-        <form hx-post="/aset/assign" hx-swap="#attribute-assignment-container" class="space-y-4">
-            <div>
-                <label for="attributeSetId" class="block text-sm font-medium text-gray-700">Select AttributeSet</label>
-                <select name="attributeSetId" id="attributeSetId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                    for _, as := range attributeSets {
-                        <option value={ strconv.Itoa(int(as.ID)) }
-						>{ as.Name }</option>
-                   }
-                </select>
-            </div>
-            <div>
-                <label for="attributeId" class="block text-sm font-medium text-gray-700">Select Attribute</label>
-                <select name="attributeId" id="attributeId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                    for _, a := range attributes {
-                        <option value={strconv.Itoa(int(a.ID))}>{ a.AttributeSeedQuery }</option>
-                    }
-                </select>
-            </div>
-            <button type="submit" class="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Assign Attribute
-                <span class="htmx-indicator">@spinner()</span>
-            </button>
-        </form>
-    </div>
+	<div class="p-4 shadow rounded-lg bg-white">
+		<form hx-post="/aset/assign" class="space-y-4">
+			<div>
+				<label for="attributeSetId" class="block text-sm font-medium text-gray-700">Select AttributeSet</label>
+				<select name="attributeSetId" id="attributeSetId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+					for _, as := range attributeSets {
+						<option value={ strconv.Itoa(int(as.ID)) }>{ as.Name }</option>
+					}
+				</select>
+			</div>
+			<div>
+				<label for="attributeId" class="block text-sm font-medium text-gray-700">Select Attribute</label>
+				<select name="attributeId" id="attributeId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+					for _, a := range attributes {
+						<option value={ strconv.Itoa(int(a.ID)) }>{ a.AISeedQuery }</option>
+					}
+				</select>
+			</div>
+			<button type="submit" class="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+				Assign Attribute
+				<span class="htmx-indicator">@spinner()</span>
+			</button>
+		</form>
+	</div>
 }
+
 /*
 
 templ assignAttributeToSet(attributeSet AttributeSet) {
@@ -102,10 +107,11 @@ templ assignAttributeToSet(attributeSet AttributeSet) {
 				<span class="htmx-indicator">@spinner()</span>
 			</button>
 			for _, a := range attributeSet.Attributes {
-				<div>{ a.AttributeSeedQuery }</div>
+				<div>{ a.AISeedQuery }</div>
 			}
 		</form>
 	</div>
 }
 
 */
+

@@ -38,7 +38,10 @@ templ attributes(attributes []Attribute, message string) {
 		{ message }
 		for _, attr := range attributes {
 			<div>{ strconv.Itoa(int(attr.ID)) }</div>
-			<div>{ attr.AttributeSeedQuery }</div>
+			<div>{ attr.AISeedQuery }</div>
+			<div>{ attr.AITask }</div>
+			<div>{ strconv.Itoa(int(attr.AIArgs.MinLength)) }</div>
+			<div>{ strconv.Itoa(int(attr.AIArgs.MaxLength)) }</div>
 			<div>{ strconv.Itoa(int(attr.AttributeModelID)) }</div>
 			<div>{ strconv.Itoa(int(attr.AttributeSetID)) }</div>
 		}

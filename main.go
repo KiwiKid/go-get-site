@@ -1394,11 +1394,18 @@ func presentAttribute() http.HandlerFunc {
 				panic(attributeSetErr)
 			}
 
-			attributeSeedQuery := r.FormValue("attributeSeedQuery")
+			aiSeedQuery := r.FormValue("attributeSeedQuery")
+			aiTask := r.FormValue("attributeSeedQuery")
+
 			createAttributeError := db.CreateAttribute(Attribute{
-				AttributeSeedQuery: attributeSeedQuery,
-				AttributeModelID:   attributeModelID,
-				AttributeSetID:     attributeSetId,
+				AISeedQuery: aiSeedQuery,
+				AIArgs: AIArgs{
+					MinLength: 10,
+					MaxLength: 100,
+				},
+				AttributeModelID: attributeModelID,
+				AITask:           aiTask,
+				AttributeSetID:   attributeSetId,
 			})
 
 			if createAttributeError != nil {

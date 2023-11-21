@@ -933,7 +933,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</h2><pre>")
+			_, err = templBuffer.WriteString("</h2><pre class=\"overflow-y-auto w-full\">")
 			if err != nil {
 				return err
 			}

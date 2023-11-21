@@ -67,13 +67,22 @@ func nav(header string) templ.Component {
 		if err != nil {
 			return err
 		}
+		_, err = templBuffer.WriteString("</a><a href=\"/attribute\" class=\"text-white hover:text-blue-400\">")
+		if err != nil {
+			return err
+		}
+		var_7 := `Attribute`
+		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
 		_, err = templBuffer.WriteString("</a><!--")
 		if err != nil {
 			return err
 		}
-		var_7 := `<a href="#" class="text-white hover:text-blue-400">Services</a>
+		var_8 := `<a href="#" class="text-white hover:text-blue-400">Services</a>
                     <a href="#" class="text-white hover:text-blue-400">Contact</a>`
-		_, err = templBuffer.WriteString(var_7)
+		_, err = templBuffer.WriteString(var_8)
 		if err != nil {
 			return err
 		}
@@ -81,8 +90,8 @@ func nav(header string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var var_8 string = header
-		_, err = templBuffer.WriteString(templ.EscapeString(var_8))
+		var var_9 string = header
+		_, err = templBuffer.WriteString(templ.EscapeString(var_9))
 		if err != nil {
 			return err
 		}

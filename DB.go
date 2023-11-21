@@ -67,6 +67,28 @@ func (db *DB) DeletePageBlocks(pageId uint) error {
 	return result.Error
 }
 
+func (db *DB) InitModel(modelName string) error {
+	var modelCount int64
+	checkErr := db.conn.Raw(`
+        SELECT COUNT(*) 
+        FROM attribute_model 
+        WHERE model_name = ?
+	`, "potsawee/t5-large-generation-squad-QuestionAnswer").Scan(&modelCount).Error
+
+	if checkErr != nil {
+		return checkErr
+	}
+
+	if modelCount == 0 {
+		createErr := db.conn.Exec("INSERT INTO attribute_model (model_name) VALUES ('potsawee/t5-large-generation-squad-QuestionAnswer')").Error
+		if createErr != nil {
+			return createErr
+		}
+	}
+
+	return nil
+}
+
 func (Page) TableName() string {
 	return "pgml.page"
 }
@@ -143,11 +165,40 @@ type AttributeSet struct {
 	Attributes  []Attribute `gorm:"foreignkey:AttributeSetID"`
 }
 
+type AIArgs struct {
+	MinLength int `json:"min_length"`
+	MaxLength int `json:"max_length"`
+}
+
 type Attribute struct {
-	ID                 uint   `gorm:"primary_key"`
-	AttributeSeedQuery string `gorm:"type:text"`
-	AttributeModelID   uint   `gorm:"index"`
-	AttributeSetID     uint   `gorm:"index"`
+	ID               uint   `gorm:"primary_key"`
+	AI               string `gorm:"type:text"`
+	AITask           string `gorm:"type:text"`
+	AISeedQuery      string `gorm:"type:text"`
+	AIArgs           AIArgs `gorm:"type:json"`
+	AttributeModelID uint   `gorm:"index"`
+	AttributeSetID   uint   `gorm:"index"`
+}
+
+type JSONField struct {
+	Config AIArgs
+}
+
+// Value implements the driver.Valuer interface for database serialization
+func (j JSONField) Value() (driver.Value, error) {
+	return json.Marshal(j.Config)
+}
+
+// Scan implements the sql.Scanner interface for database deserialization
+func (j *JSONField) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &j.Config)
 }
 
 type AttributeResult struct {
@@ -433,6 +484,7 @@ func (db *DB) Migrate() {
 
 	log.Print("Migrate Start - Attribute")
 	db.conn.AutoMigrate(&AttributeSet{}, &AttributeModel{})
+
 	db.conn.AutoMigrate(&Attribute{}, &AttributeResult{})
 	log.Print("Migrate Start - Question")
 	db.conn.AutoMigrate(&Question{})

@@ -257,7 +257,7 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 										>
 									</summary>
 									<h2>Content</h2>
-									<pre>{ item.Content }</pre>
+									<pre class="overflow-y-auto w-full">{ item.Content }</pre>
 									<br/>
 									if item.ToProcess() {
 										<span class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">Get Page</span>

@@ -139,7 +139,7 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_9 string = attr.AttributeSeedQuery
+			var var_9 string = attr.AISeedQuery
 			_, err = templBuffer.WriteString(templ.EscapeString(var_9))
 			if err != nil {
 				return err
@@ -148,7 +148,7 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_10 string = strconv.Itoa(int(attr.AttributeModelID))
+			var var_10 string = attr.AITask
 			_, err = templBuffer.WriteString(templ.EscapeString(var_10))
 			if err != nil {
 				return err
@@ -157,8 +157,35 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_11 string = strconv.Itoa(int(attr.AttributeSetID))
+			var var_11 string = strconv.Itoa(int(attr.AIArgs.MinLength))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_11))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div> <div>")
+			if err != nil {
+				return err
+			}
+			var var_12 string = strconv.Itoa(int(attr.AIArgs.MaxLength))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_12))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div> <div>")
+			if err != nil {
+				return err
+			}
+			var var_13 string = strconv.Itoa(int(attr.AttributeModelID))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_13))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div> <div>")
+			if err != nil {
+				return err
+			}
+			var var_14 string = strconv.Itoa(int(attr.AttributeSetID))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_14))
 			if err != nil {
 				return err
 			}
