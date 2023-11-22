@@ -71,16 +71,16 @@ func (db *DB) InitModel(modelName string) error {
 	var modelCount int64
 	checkErr := db.conn.Raw(`
         SELECT COUNT(*) 
-        FROM attribute_model 
-        WHERE model_name = ?
-	`, "potsawee/t5-large-generation-squad-QuestionAnswer").Scan(&modelCount).Error
+        FROM attribute_models
+        WHERE name = ?
+	`, modelName).Scan(&modelCount).Error
 
 	if checkErr != nil {
 		return checkErr
 	}
 
 	if modelCount == 0 {
-		createErr := db.conn.Exec("INSERT INTO attribute_model (model_name) VALUES ('potsawee/t5-large-generation-squad-QuestionAnswer')").Error
+		createErr := db.CreateAttributeModel(AttributeModel{Name: modelName})
 		if createErr != nil {
 			return createErr
 		}
@@ -485,6 +485,8 @@ func (db *DB) Migrate() {
 	log.Print("Migrate Start - Attribute")
 	db.conn.AutoMigrate(&AttributeSet{}, &AttributeModel{})
 
+	db.InitModel("potsawee/t5-large-generation-squad-QuestionAnswer")
+
 	db.conn.AutoMigrate(&Attribute{}, &AttributeResult{})
 	log.Print("Migrate Start - Question")
 	db.conn.AutoMigrate(&Question{})
@@ -497,7 +499,7 @@ func (db *DB) Migrate() {
         SELECT COUNT(*) 
         FROM pg_indexes 
         WHERE indexname = ?
-	`, "pgml.page", "website_url").Scan(&count)
+	`, "pgml.page", "url").Scan(&count)
 
 	if count == 0 {
 		db.conn.Exec("CREATE INDEX CONCURRENTLY website_url ON pgml.page (url)")

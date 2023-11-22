@@ -78,7 +78,7 @@ func main() {
 	//r.Handle("/attributes/models", presentAttributeModels())
 	r.Handle("/aset", presentAttributeSet()).Methods("GET", "POST")
 	r.Handle("/aset/{attributeSetId}", presentAttributeSet()).Methods("GET", "POST")
-	r.Handle("/attribute", presentAttribute()).Methods("GET", "POST")
+	r.Handle("/attributes", presentAttribute()).Methods("GET", "POST")
 	//r.Handle("/attributes/{attributeSetId}/attribute/{attributeId}", presentAttribute())
 
 	r.Handle("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}/questions", presentQuestion()).Methods("GET", "POST")
@@ -1395,7 +1395,22 @@ func presentAttribute() http.HandlerFunc {
 			}
 
 			aiSeedQuery := r.FormValue("attributeSeedQuery")
-			aiTask := r.FormValue("attributeSeedQuery")
+			aiTask := r.FormValue("aiTask")
+
+
+			minlengthStr := r.FormValue("minlength")
+			minlength, minlengthErr := stringToUint(minlengthStr)
+			if minlengthErr != nil {
+				panic(minlengthErr)
+			}
+		
+			maxlengthStr := r.FormValue("maxlength")
+			maxlength, maxlengthErr := stringToUin(maxlengthStr)
+			if maxlengthErr != nil {
+				panic(maxlengthErr)
+			}
+
+			
 
 			createAttributeError := db.CreateAttribute(Attribute{
 				AISeedQuery: aiSeedQuery,
@@ -1406,6 +1421,10 @@ func presentAttribute() http.HandlerFunc {
 				AttributeModelID: attributeModelID,
 				AITask:           aiTask,
 				AttributeSetID:   attributeSetId,
+				AIArgs: 		  AIArgs{
+					MinLength: minlength,
+					MaxLength: maxlength,
+				}
 			})
 
 			if createAttributeError != nil {
@@ -1416,11 +1435,21 @@ func presentAttribute() http.HandlerFunc {
 
 		attrs, modelsErr := db.ListAttributes()
 		if modelsErr != nil {
-			log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
+			log.Printf("Error ListAttributes link: %v", modelsErr)
 			return
 		}
 
-		attrComp := attributes(attrs, message)
+		attrModels, attModelsErr := db.ListAttributeModels()
+		if attModelsErr != nil {
+			log.Printf("Error ListAttributeModels link: %v", attModelsErr)
+			return
+		}
+
+		if len(attrs) == 0 {
+			message = "(no attributes)"
+		}
+
+		attrComp := attributeContainer(attrs, attrModels, message)
 
 		templ.Handler(attrComp).ServeHTTP(w, r)
 	}
@@ -1476,13 +1505,13 @@ func presentAttributeSet() http.HandlerFunc {
 
 		attributeModels, getModelsErr := db.ListAttributeModels()
 		if getModelsErr != nil {
-			log.Printf("Error ListAllAttributeSets link: %v", getModelsErr)
+			log.Printf("Error ListAttributeModels link: %v", getModelsErr)
 			return
 		}
 
 		attributes, getAttributesErr := db.ListAttributes()
 		if getModelsErr != nil {
-			log.Printf("Error ListAllAttributeSets link: %v", getAttributesErr)
+			log.Printf("Error ListAttributes link: %v", getAttributesErr)
 			return
 		}
 

@@ -67,7 +67,7 @@ func nav(header string) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</a><a href=\"/attribute\" class=\"text-white hover:text-blue-400\">")
+		_, err = templBuffer.WriteString("</a><a href=\"/attributes\" class=\"text-white hover:text-blue-400\">")
 		if err != nil {
 			return err
 		}

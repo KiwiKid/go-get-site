@@ -26,7 +26,7 @@ func newAttribute(attributeModels []AttributeModel) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md w-1/4\"><form hx-post=\"/attribute\" hx-swap=\"#attribute-container\" class=\"space-y-4 \"><div><label for=\"attributeSeedQuery\" class=\"block text-sm font-medium text-gray-700\">")
+		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md w-1/4\"><form hx-post=\"/attributes\" hx-swap=\"#attribute-container\" class=\"space-y-4 \"><div><label for=\"attributeSeedQuery\" class=\"block text-sm font-medium text-gray-700\">")
 		if err != nil {
 			return err
 		}
@@ -99,7 +99,7 @@ func newAttribute(attributeModels []AttributeModel) templ.Component {
 	})
 }
 
-func attributes(attributes []Attribute, message string) templ.Component {
+func attributeContainer(attrs []Attribute, attributeModels []AttributeModel, message string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -112,16 +112,74 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			var_6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		_, err = templBuffer.WriteString("<html>")
+		if err != nil {
+			return err
+		}
+		err = header("Attribute").Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("<body>")
+		if err != nil {
+			return err
+		}
+		err = nav("Attribute").Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("<div class=\"flex\" id=\"attribute-container\">")
+		if err != nil {
+			return err
+		}
+		if len(message) > 0 {
+			_, err = templBuffer.WriteString("<div>")
+			if err != nil {
+				return err
+			}
+			var var_7 string = message
+			_, err = templBuffer.WriteString(templ.EscapeString(var_7))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div>")
+			if err != nil {
+				return err
+			}
+		}
+		err = attributes(attrs, attributeModels, message).Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		err = newAttribute(attributeModels).Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div></body></html>")
+		if err != nil {
+			return err
+		}
+		if !templIsBuffer {
+			_, err = templBuffer.WriteTo(w)
+		}
+		return err
+	})
+}
+
+func attributes(attributes []Attribute, attributeModels []AttributeModel, message string) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+		templBuffer, templIsBuffer := w.(*bytes.Buffer)
+		if !templIsBuffer {
+			templBuffer = templ.GetBuffer()
+			defer templ.ReleaseBuffer(templBuffer)
+		}
+		ctx = templ.InitializeContext(ctx)
+		var_8 := templ.GetChildren(ctx)
+		if var_8 == nil {
+			var_8 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div class=\" border border-gray-400 rounded-md w-1/4\">")
-		if err != nil {
-			return err
-		}
-		var var_7 string = message
-		_, err = templBuffer.WriteString(templ.EscapeString(var_7))
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(" ")
 		if err != nil {
 			return err
 		}
@@ -130,16 +188,7 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_8 string = strconv.Itoa(int(attr.ID))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_8))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_9 string = attr.AISeedQuery
+			var var_9 string = strconv.Itoa(int(attr.ID))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_9))
 			if err != nil {
 				return err
@@ -148,7 +197,7 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_10 string = attr.AITask
+			var var_10 string = attr.AISeedQuery
 			_, err = templBuffer.WriteString(templ.EscapeString(var_10))
 			if err != nil {
 				return err
@@ -157,7 +206,7 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_11 string = strconv.Itoa(int(attr.AIArgs.MinLength))
+			var var_11 string = attr.AITask
 			_, err = templBuffer.WriteString(templ.EscapeString(var_11))
 			if err != nil {
 				return err
@@ -166,7 +215,7 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_12 string = strconv.Itoa(int(attr.AIArgs.MaxLength))
+			var var_12 string = strconv.Itoa(int(attr.AIArgs.MinLength))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_12))
 			if err != nil {
 				return err
@@ -175,7 +224,7 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_13 string = strconv.Itoa(int(attr.AttributeModelID))
+			var var_13 string = strconv.Itoa(int(attr.AIArgs.MaxLength))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_13))
 			if err != nil {
 				return err
@@ -184,8 +233,17 @@ func attributes(attributes []Attribute, message string) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_14 string = strconv.Itoa(int(attr.AttributeSetID))
+			var var_14 string = strconv.Itoa(int(attr.AttributeModelID))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_14))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div> <div>")
+			if err != nil {
+				return err
+			}
+			var var_15 string = strconv.Itoa(int(attr.AttributeSetID))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_15))
 			if err != nil {
 				return err
 			}
