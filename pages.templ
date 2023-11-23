@@ -215,6 +215,9 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					<div class="w-1/3 p-2">
 						Attribute Set:
 						<a href="/aset">(manage)</a>
+						<div>
+							@attributeSetSelect(attributeSets)
+						</div>
 					</div>
 				</div>
 				for _, item := range pages {
@@ -242,9 +245,6 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 								}
 								<div class="w-1/4 p-2">{ item.Title }</div>
 								<div class="w-1/3 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{ item.URL }</a></div>
-								<div>
-									@attributeSetSelect(attributeSets)
-								</div>
 							</div>
 						</div>
 						<!-- Second Row -->

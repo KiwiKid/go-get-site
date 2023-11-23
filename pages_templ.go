@@ -775,7 +775,15 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</a></div></div>")
+		_, err = templBuffer.WriteString("</a><div>")
+		if err != nil {
+			return err
+		}
+		err = attributeSetSelect(attributeSets).Render(ctx, templBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div></div></div>")
 		if err != nil {
 			return err
 		}
@@ -861,15 +869,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</a></div><div>")
-			if err != nil {
-				return err
-			}
-			err = attributeSetSelect(attributeSets).Render(ctx, templBuffer)
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div></div></div><!--")
+			_, err = templBuffer.WriteString("</a></div></div></div><!--")
 			if err != nil {
 				return err
 			}
