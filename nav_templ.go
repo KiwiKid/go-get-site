@@ -53,7 +53,7 @@ func nav(header string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_5 := `Home`
+		var_5 := `[Home]`
 		_, err = templBuffer.WriteString(var_5)
 		if err != nil {
 			return err
@@ -62,17 +62,8 @@ func nav(header string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_6 := `Search`
+		var_6 := `[Search]`
 		_, err = templBuffer.WriteString(var_6)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</a><a href=\"/attributes\" class=\"text-white hover:text-blue-400\">")
-		if err != nil {
-			return err
-		}
-		var_7 := `Attribute`
-		_, err = templBuffer.WriteString(var_7)
 		if err != nil {
 			return err
 		}
@@ -80,9 +71,27 @@ func nav(header string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_8 := `<a href="#" class="text-white hover:text-blue-400">Services</a>
-                    <a href="#" class="text-white hover:text-blue-400">Contact</a>`
+		var_7 := `<a href="/attributes" class="text-white hover:text-blue-400">[Assign AI Queries]</a>`
+		_, err = templBuffer.WriteString(var_7)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("--><a href=\"/aset\" class=\"text-white hover:text-blue-400\">")
+		if err != nil {
+			return err
+		}
+		var_8 := `[Manage AI Queries]`
 		_, err = templBuffer.WriteString(var_8)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</a><!--")
+		if err != nil {
+			return err
+		}
+		var_9 := `<a href="#" class="text-white hover:text-blue-400">Services</a>
+                    <a href="#" class="text-white hover:text-blue-400">Contact</a>`
+		_, err = templBuffer.WriteString(var_9)
 		if err != nil {
 			return err
 		}
@@ -90,8 +99,8 @@ func nav(header string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var var_9 string = header
-		_, err = templBuffer.WriteString(templ.EscapeString(var_9))
+		var var_10 string = header
+		_, err = templBuffer.WriteString(templ.EscapeString(var_10))
 		if err != nil {
 			return err
 		}

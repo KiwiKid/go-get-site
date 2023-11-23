@@ -26,21 +26,48 @@ func newAttribute(attributeModels []AttributeModel) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md w-1/4\"><form hx-post=\"/attributes\" hx-swap=\"#attribute-container\" class=\"space-y-4 \"><div><label for=\"attributeSeedQuery\" class=\"block text-sm font-medium text-gray-700\">")
+		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md w-1/4\"><h1>")
 		if err != nil {
 			return err
 		}
-		var_2 := `Attribute Seed Query`
+		var_2 := `New Attribute`
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><textarea name=\"attributeSeedQuery\" id=\"attributeSeedQuery\" rows=\"3\" class=\"mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter attribute seed query\"></textarea></div><div><label for=\"attributeModelID\" class=\"block text-sm font-medium text-gray-700\">")
+		_, err = templBuffer.WriteString("</h1><form hx-post=\"/attributes\" hx-target=\"#aset-container\" class=\"space-y-4 \"><div><label for=\"attributeSeedQuery\" class=\"block text-sm font-medium text-gray-700\">")
 		if err != nil {
 			return err
 		}
-		var_3 := `Attribute Model ID`
+		var_3 := `Attribute Seed Query`
 		_, err = templBuffer.WriteString(var_3)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><textarea name=\"attributeSeedQuery\" id=\"attributeSeedQuery\" rows=\"3\" class=\"mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter attribute seed query\"></textarea></div><div><label for=\"aiTask\" class=\"block text-sm font-medium text-gray-700\">")
+		if err != nil {
+			return err
+		}
+		var_4 := `Attribute Model ID`
+		_, err = templBuffer.WriteString(var_4)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label><select name=\"aiTask\" id=\"aiTask\" class=\"mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"><option value=\"text2text-generation\">")
+		if err != nil {
+			return err
+		}
+		var_5 := `text2text-generation`
+		_, err = templBuffer.WriteString(var_5)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</option></select><label for=\"attributeModelID\" class=\"block text-sm font-medium text-gray-700\">")
+		if err != nil {
+			return err
+		}
+		var_6 := `Attribute Model ID`
+		_, err = templBuffer.WriteString(var_6)
 		if err != nil {
 			return err
 		}
@@ -61,8 +88,8 @@ func newAttribute(attributeModels []AttributeModel) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_4 string = model.Name
-			_, err = templBuffer.WriteString(templ.EscapeString(var_4))
+			var var_7 string = model.Name
+			_, err = templBuffer.WriteString(templ.EscapeString(var_7))
 			if err != nil {
 				return err
 			}
@@ -75,8 +102,8 @@ func newAttribute(attributeModels []AttributeModel) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_5 := `Create Attribute`
-		_, err = templBuffer.WriteString(var_5)
+		var_8 := `Create Attribute`
+		_, err = templBuffer.WriteString(var_8)
 		if err != nil {
 			return err
 		}
@@ -107,9 +134,9 @@ func attributeContainer(attrs []Attribute, attributeModels []AttributeModel, mes
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_6 := templ.GetChildren(ctx)
-		if var_6 == nil {
-			var_6 = templ.NopComponent
+		var_9 := templ.GetChildren(ctx)
+		if var_9 == nil {
+			var_9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<html>")
@@ -128,17 +155,37 @@ func attributeContainer(attrs []Attribute, attributeModels []AttributeModel, mes
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("<div class=\"flex\" id=\"attribute-container\">")
+		_, err = templBuffer.WriteString("<div class=\"flex\" id=\"attribute-container\"></div></body></html>")
 		if err != nil {
 			return err
 		}
+		if !templIsBuffer {
+			_, err = templBuffer.WriteTo(w)
+		}
+		return err
+	})
+}
+
+func attributeList(attrs []Attribute, attributeModels []AttributeModel, message string) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+		templBuffer, templIsBuffer := w.(*bytes.Buffer)
+		if !templIsBuffer {
+			templBuffer = templ.GetBuffer()
+			defer templ.ReleaseBuffer(templBuffer)
+		}
+		ctx = templ.InitializeContext(ctx)
+		var_10 := templ.GetChildren(ctx)
+		if var_10 == nil {
+			var_10 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
 		if len(message) > 0 {
 			_, err = templBuffer.WriteString("<div>")
 			if err != nil {
 				return err
 			}
-			var var_7 string = message
-			_, err = templBuffer.WriteString(templ.EscapeString(var_7))
+			var var_11 string = message
+			_, err = templBuffer.WriteString(templ.EscapeString(var_11))
 			if err != nil {
 				return err
 			}
@@ -152,10 +199,6 @@ func attributeContainer(attrs []Attribute, attributeModels []AttributeModel, mes
 			return err
 		}
 		err = newAttribute(attributeModels).Render(ctx, templBuffer)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</div></body></html>")
 		if err != nil {
 			return err
 		}
@@ -174,9 +217,9 @@ func attributes(attributes []Attribute, attributeModels []AttributeModel, messag
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_8 := templ.GetChildren(ctx)
-		if var_8 == nil {
-			var_8 = templ.NopComponent
+		var_12 := templ.GetChildren(ctx)
+		if var_12 == nil {
+			var_12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div class=\" border border-gray-400 rounded-md w-1/4\">")
@@ -188,43 +231,7 @@ func attributes(attributes []Attribute, attributeModels []AttributeModel, messag
 			if err != nil {
 				return err
 			}
-			var var_9 string = strconv.Itoa(int(attr.ID))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_9))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_10 string = attr.AISeedQuery
-			_, err = templBuffer.WriteString(templ.EscapeString(var_10))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_11 string = attr.AITask
-			_, err = templBuffer.WriteString(templ.EscapeString(var_11))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_12 string = strconv.Itoa(int(attr.AIArgs.MinLength))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_12))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_13 string = strconv.Itoa(int(attr.AIArgs.MaxLength))
+			var var_13 string = strconv.Itoa(int(attr.ID))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_13))
 			if err != nil {
 				return err
@@ -233,7 +240,7 @@ func attributes(attributes []Attribute, attributeModels []AttributeModel, messag
 			if err != nil {
 				return err
 			}
-			var var_14 string = strconv.Itoa(int(attr.AttributeModelID))
+			var var_14 string = attr.AISeedQuery
 			_, err = templBuffer.WriteString(templ.EscapeString(var_14))
 			if err != nil {
 				return err
@@ -242,8 +249,35 @@ func attributes(attributes []Attribute, attributeModels []AttributeModel, messag
 			if err != nil {
 				return err
 			}
-			var var_15 string = strconv.Itoa(int(attr.AttributeSetID))
+			var var_15 string = attr.AITask
 			_, err = templBuffer.WriteString(templ.EscapeString(var_15))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div> <div>")
+			if err != nil {
+				return err
+			}
+			var var_16 string = strconv.Itoa(int(attr.AttributeModelID))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_16))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div> <div>")
+			if err != nil {
+				return err
+			}
+			var var_17 string = strconv.Itoa(int(len(attr.AttributeSetLinks)))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_17))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" ")
+			if err != nil {
+				return err
+			}
+			var_18 := `AttributeSetLinks`
+			_, err = templBuffer.WriteString(var_18)
 			if err != nil {
 				return err
 			}

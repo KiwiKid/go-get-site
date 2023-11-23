@@ -11,7 +11,7 @@ import "bytes"
 
 import "strconv"
 
-func pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet map[string]struct{}, progress string, viewPageSize int, processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool, message string) templ.Component {
+func pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet map[string]struct{}, progress string, viewPageSize int, processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool, attributeSets []AttributeSet, selectedAttributeSetId int, message string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -861,7 +861,15 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</a></div></div></div><!--")
+			_, err = templBuffer.WriteString("</a></div><div>")
+			if err != nil {
+				return err
+			}
+			err = attributeSetSelect(attributeSets).Render(ctx, templBuffer)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div></div></div><!--")
 			if err != nil {
 				return err
 			}

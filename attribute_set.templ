@@ -4,8 +4,18 @@ import (
 	"strconv"
 )
 
-templ attributeSetSelect(attribute []AttributeSet, selectedAttributeSetId uint) {
+templ attributeSetSelect(attributeSets []AttributeSet) {
 	<div>attributeSetSelect</div>
+
+	<select>
+		for _, att := range attributeSets {
+			<option value={ strconv.Itoa(int(att.ID)) }>{ att.Name }</option>
+		}
+	</select>
+}
+
+templ attributeSetSelected(attribute AttributeSet){
+	<div> { attribute.Name } </div>
 }
 
 templ newAttributeSet() {
@@ -29,44 +39,40 @@ templ newAttributeSet() {
 	</div>
 }
 
-templ listAttributeSets(attributes []Attribute, attributeSets []AttributeSet, attributeModels []AttributeModel, message string) {
+templ attributeSetContainer(attributes []Attribute, attributeSets []AttributeSet, attributeModels []AttributeModel, message string) {
 	<html>
 		@header("Attribute Sets")
 		<body>
 			@nav("Attribute Sets")
 			<div class="flex" id="aset-container">
-				<div>
-					{ message }
-				</div>
-				@newAttributeSet()
-				@newAttribute(attributeModels)
-				@assignAttributeToSet(attributes, attributeSets)
-				for _, aset := range attributeSets {
-					<div class=" border border-gray-400 rounded-md w-1/4">
-						<h1>{ aset.Name }</h1>
-						Attributes:
-						for _, a := range aset.Attributes {
-							<div>{ a.AISeedQuery }</div>
-							<div>{ a.AITask }</div>
-						}
-					</div>
-				}
+				@attributeSetList(attributes, attributeSets, attributeModels, message)
 			</div>
 		</body>
 	</html>
 }
 
-templ assignAttributeToSet(attributes []Attribute, attributeSets []AttributeSet) {
+templ attributeSetList(attributes []Attribute, attributeSets []AttributeSet, attributeModels []AttributeModel, message string) {
+	<div>
+		{ message }
+	</div>
+	@newAttributeSet()
+	@newAttribute(attributeModels)
+	for _, aset := range attributeSets {
+		<div class=" border border-gray-400 rounded-md w-1/4">
+			<h1>{ aset.Name }</h1>
+			Attributes:
+			for _, a := range aset.AttributeSetLinks {
+				<div>{ strconv.Itoa(int(a.AttributeID)) }</div>
+
+			}
+			@createAttributeSetLink(attributes, aset)
+		</div>
+	}
+}
+
+templ createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) {
 	<div class="p-4 shadow rounded-lg bg-white">
-		<form hx-post="/aset/assign" class="space-y-4">
-			<div>
-				<label for="attributeSetId" class="block text-sm font-medium text-gray-700">Select AttributeSet</label>
-				<select name="attributeSetId" id="attributeSetId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-					for _, as := range attributeSets {
-						<option value={ strconv.Itoa(int(as.ID)) }>{ as.Name }</option>
-					}
-				</select>
-			</div>
+		<form hx-post={ attributeSetURL(attributeSet.ID) } hx-target="#aset-container" class="space-y-4">
 			<div>
 				<label for="attributeId" class="block text-sm font-medium text-gray-700">Select Attribute</label>
 				<select name="attributeId" id="attributeId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">

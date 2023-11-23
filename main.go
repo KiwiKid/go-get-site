@@ -874,6 +874,9 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			page = 1
 		}
 
+		selectedAttributeSetIdStr := r.URL.Query().Get("selectedAttributeSetId")
+		selectedAttributeSetId, err := strconv.Atoi(selectedAttributeSetIdStr)
+
 		viewPageSizeStr := r.URL.Query().Get("viewPageSize")
 		viewPageSizeInt, err := strconv.Atoi(viewPageSizeStr)
 		if err != nil || viewPageSizeInt <= 0 {
@@ -984,6 +987,12 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		dripLoadStr := fmt.Sprintf("every %dm", dripLoadFreqMin)
 		log.Printf("pagesList length: %d dripLoad %v dripLoadCount %d", len(pagesList), dripLoad, dripLoadCount)
 
+		attributeSets, modelsErr := db.ListAllAttributeSets()
+		if modelsErr != nil {
+			log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
+			return
+		}
+
 		pagesComp := pages(
 			pagesList,
 			*website,
@@ -1002,7 +1011,10 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			processAll,
 			skipNewLinkInsert,
 			ignoreWarnings,
-			message)
+			attributeSets,
+			selectedAttributeSetId,
+			message,
+		)
 
 		templ.Handler(pagesComp).ServeHTTP(w, r)
 	}
@@ -1383,52 +1395,31 @@ func presentAttribute() http.HandlerFunc {
 			vars := mux.Vars(r)
 			attributeSetIdStr := vars["attributeSetId"]
 
-			attributeSetId, attributeSetErr := stringToUint(attributeSetIdStr)
-			if attributeSetErr != nil {
-				panic(attributeSetErr)
-			}
+			if len(attributeSetIdStr) == 0 {
 
-			attributeModelIDStr := r.FormValue("attributeModelID")
-			attributeModelID, attributeSetErr := stringToUint(attributeModelIDStr)
-			if attributeSetErr != nil {
-				panic(attributeSetErr)
-			}
-
-			aiSeedQuery := r.FormValue("attributeSeedQuery")
-			aiTask := r.FormValue("aiTask")
-
-
-			minlengthStr := r.FormValue("minlength")
-			minlength, minlengthErr := stringToUint(minlengthStr)
-			if minlengthErr != nil {
-				panic(minlengthErr)
-			}
-		
-			maxlengthStr := r.FormValue("maxlength")
-			maxlength, maxlengthErr := stringToUin(maxlengthStr)
-			if maxlengthErr != nil {
-				panic(maxlengthErr)
-			}
-
-			
-
-			createAttributeError := db.CreateAttribute(Attribute{
-				AISeedQuery: aiSeedQuery,
-				AIArgs: AIArgs{
-					MinLength: 10,
-					MaxLength: 100,
-				},
-				AttributeModelID: attributeModelID,
-				AITask:           aiTask,
-				AttributeSetID:   attributeSetId,
-				AIArgs: 		  AIArgs{
-					MinLength: minlength,
-					MaxLength: maxlength,
+				attributeModelIDStr := r.FormValue("attributeModelID")
+				attributeModelID, attributeSetErr := stringToUint(attributeModelIDStr)
+				if attributeSetErr != nil {
+					panic(attributeSetErr)
 				}
-			})
 
-			if createAttributeError != nil {
-				panic(createAttributeError.Error)
+				aiSeedQuery := r.FormValue("attributeSeedQuery")
+				aiTask := r.FormValue("aiTask")
+
+				aiOptions := r.FormValue("aiOptions")
+
+				createAttributeError := db.CreateAttribute(Attribute{
+					AISeedQuery:      aiSeedQuery,
+					AttributeModelID: attributeModelID,
+					AITask:           aiTask,
+					AIOptions:        aiOptions,
+				})
+
+				if createAttributeError != nil {
+					panic(createAttributeError.Error)
+				}
+			} else {
+				panic("update not supported")
 			}
 
 		}
@@ -1436,22 +1427,28 @@ func presentAttribute() http.HandlerFunc {
 		attrs, modelsErr := db.ListAttributes()
 		if modelsErr != nil {
 			log.Printf("Error ListAttributes link: %v", modelsErr)
-			return
 		}
 
 		attrModels, attModelsErr := db.ListAttributeModels()
 		if attModelsErr != nil {
 			log.Printf("Error ListAttributeModels link: %v", attModelsErr)
-			return
 		}
 
 		if len(attrs) == 0 {
 			message = "(no attributes)"
 		}
 
-		attrComp := attributeContainer(attrs, attrModels, message)
+		if r.Method == "POST" {
+			attrList := attributeList(attrs, attrModels, message)
 
-		templ.Handler(attrComp).ServeHTTP(w, r)
+			templ.Handler(attrList).ServeHTTP(w, r)
+
+		} else {
+			attrComp := attributeContainer(attrs, attrModels, message)
+
+			templ.Handler(attrComp).ServeHTTP(w, r)
+		}
+
 	}
 
 }
@@ -1472,6 +1469,26 @@ func presentAttributeSet() http.HandlerFunc {
 				attributeSetIdStr := vars["attributeSetId"]
 
 				if len(attributeSetIdStr) > 0 {
+					//attributeSetIdStr := r.FormValue("attributeSetId")
+					attributeSetId, attributeSetIdErr := stringToUint(attributeSetIdStr)
+					if attributeSetIdErr != nil {
+						panic(attributeSetIdErr)
+					}
+					attributeIdStr := r.FormValue("attributeId")
+					attributeId, attributeIdErr := stringToUint(attributeIdStr)
+					if attributeIdErr != nil {
+						panic(attributeIdErr)
+					}
+
+					log.Printf("CreateAttributeSetLink(%s, %s)", attributeSetIdStr, attributeIdStr)
+					newSetLinkErr := db.CreateAttributeSetLink(AttributeSetLink{
+						AttributeSetID: attributeSetId,
+						AttributeID:    attributeId,
+					})
+
+					if newSetLinkErr != nil {
+						panic(newSetLinkErr.Error)
+					}
 
 				} else {
 					setName := r.FormValue("setName")
@@ -1488,6 +1505,22 @@ func presentAttributeSet() http.HandlerFunc {
 			}
 		case http.MethodGet:
 			{
+
+			}
+		case http.MethodDelete:
+			{
+				vars := mux.Vars(r)
+				attributeSetIdStr := vars["attributeSetId"]
+				attributeSetId, attributeSetIdErr := stringToUint(attributeSetIdStr)
+				if attributeSetIdErr != nil {
+					panic(attributeSetIdErr)
+				}
+
+				newSetErr := db.DeleteAttributeSet(attributeSetId)
+
+				if newSetErr != nil {
+					panic(newSetErr.Error)
+				}
 
 			}
 		default:
@@ -1515,8 +1548,14 @@ func presentAttributeSet() http.HandlerFunc {
 			return
 		}
 
-		setListComp := listAttributeSets(attributes, sets, attributeModels, message)
+		if r.Method == http.MethodDelete || r.Method == http.MethodPost {
+			setListComp := attributeSetList(attributes, sets, attributeModels, message)
 
-		templ.Handler(setListComp).ServeHTTP(w, r)
+			templ.Handler(setListComp).ServeHTTP(w, r)
+
+		}
+		setListContainerComp := attributeSetContainer(attributes, sets, attributeModels, message)
+
+		templ.Handler(setListContainerComp).ServeHTTP(w, r)
 	}
 }

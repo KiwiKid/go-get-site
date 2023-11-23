@@ -158,47 +158,27 @@ type AttributeModel struct {
 	Name string `gorm:"type:text"`
 }
 
-type AttributeSet struct {
-	ID          uint `gorm:"primary_key"`
-	Name        string
-	DateCreated time.Time   `gorm:"type:timestamp"`
-	Attributes  []Attribute `gorm:"foreignkey:AttributeSetID"`
+type AttributeSetLink struct {
+	ID             uint `gorm:"primary_key"`
+	AttributeSetID uint `gorm:"index"`
+	AttributeID    uint `gorm:"index"`
 }
 
-type AIArgs struct {
-	MinLength int `json:"min_length"`
-	MaxLength int `json:"max_length"`
+type AttributeSet struct {
+	ID                uint `gorm:"primary_key"`
+	Name              string
+	DateCreated       time.Time          `gorm:"type:timestamp"`
+	AttributeSetLinks []AttributeSetLink `gorm:"foreignkey:AttributeID"`
 }
 
 type Attribute struct {
-	ID               uint   `gorm:"primary_key"`
-	AI               string `gorm:"type:text"`
-	AITask           string `gorm:"type:text"`
-	AISeedQuery      string `gorm:"type:text"`
-	AIArgs           AIArgs `gorm:"type:json"`
-	AttributeModelID uint   `gorm:"index"`
-	AttributeSetID   uint   `gorm:"index"`
-}
-
-type JSONField struct {
-	Config AIArgs
-}
-
-// Value implements the driver.Valuer interface for database serialization
-func (j JSONField) Value() (driver.Value, error) {
-	return json.Marshal(j.Config)
-}
-
-// Scan implements the sql.Scanner interface for database deserialization
-func (j *JSONField) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-	return json.Unmarshal(b, &j.Config)
+	ID                uint               `gorm:"primary_key"`
+	AI                string             `gorm:"type:text"`
+	AITask            string             `gorm:"type:text"`
+	AISeedQuery       string             `gorm:"type:text"`
+	AIOptions         string             `gorm:"type:text"`
+	AttributeModelID  uint               `gorm:"index"`
+	AttributeSetLinks []AttributeSetLink `gorm:"foreignkey:AttributeID"`
 }
 
 type AttributeResult struct {
@@ -321,7 +301,9 @@ type DB struct {
 func NewDB() (*DB, error) {
 	log.Print("Init DB...")
 	connStr := os.Getenv("DB_CONN_STR")
-	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
+		PrepareStmt: false,
+	})
 	if err != nil {
 		log.Printf("Init DB..,failed %v...", err)
 		panic(err)
@@ -483,9 +465,10 @@ func (db *DB) Migrate() {
 	db.conn.AutoMigrate(&ImprovedQuestion{})
 
 	log.Print("Migrate Start - Attribute")
-	db.conn.AutoMigrate(&AttributeSet{}, &AttributeModel{})
+	db.conn.AutoMigrate(&AttributeSet{}, &AttributeModel{}, &AttributeSetLink{})
 
 	db.InitModel("potsawee/t5-large-generation-squad-QuestionAnswer")
+	db.InitModel("gpt/gpt4")
 
 	db.conn.AutoMigrate(&Attribute{}, &AttributeResult{})
 	log.Print("Migrate Start - Question")
@@ -1051,7 +1034,7 @@ func (db *DB) DeleteAttributeSet(id uint) error {
 
 func (db *DB) ListAllAttributeSets() ([]AttributeSet, error) {
 	var sets []AttributeSet
-	err := db.conn.Preload("Attributes").Find(&sets).Error
+	err := db.conn.Preload("AttributeSetLinks").Find(&sets).Error
 	if err != nil {
 		return nil, err
 	}
@@ -1110,6 +1093,38 @@ func (db *DB) CreateAttribute(a Attribute) error {
 
 func (db *DB) DeleteAttribute(id uint) error {
 	result := db.conn.Delete(&Attribute{}, id)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) ListAttributesForSet(asetId uint) ([]Attribute, error) {
+	var attributes []Attribute
+	err := db.conn.Joins("JOIN attribute_set_links on attribute_set_links.attribute_id = attributes.id").
+		Where("attribute_set_links.attribute_set_id = ?", asetId).
+		Find(&attributes).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return attributes, nil
+}
+
+func (db *DB) CreateAttributeSetLink(a AttributeSetLink) error {
+	log.Printf("Creating AttributeSetLink %v", a)
+	result := db.conn.Create(&a)
+	if result.Error != nil {
+		log.Print(result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (db *DB) DeleteAttributeSetLink(id uint) error {
+	result := db.conn.Delete(&AttributeSetLink{}, id)
 	if result.Error != nil {
 		log.Print(result.Error)
 		return result.Error
