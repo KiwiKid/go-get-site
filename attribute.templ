@@ -5,8 +5,8 @@ import (
 )
 
 templ newAttribute(attributeModels []AttributeModel) {
-	<div class="p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md w-1/4">
-	<h1>New Attribute</h1>
+	<div class="p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md">
+		<h1>New Attribute</h1>
 		<form hx-post="/attributes" hx-target="#aset-container" class="space-y-4 ">
 			<div>
 				<label for="attributeSeedQuery" class="block text-sm font-medium text-gray-700">Attribute Seed Query</label>
@@ -59,14 +59,18 @@ templ attributeList(attrs []Attribute, attributeModels []AttributeModel, message
 }
 
 templ attributes(attributes []Attribute, attributeModels []AttributeModel, message string) {
-	<div class=" border border-gray-400 rounded-md w-1/4">
+	<div class=" border border-gray-400 rounded-md">
 		for _, attr := range attributes {
-			<div>{ strconv.Itoa(int(attr.ID)) }</div>
-			<div>{ attr.AISeedQuery }</div>
-			<div>{ attr.AITask }</div>
-			<div>{ strconv.Itoa(int(attr.AttributeModelID)) }</div>
-			<div>{ strconv.Itoa(int(len(attr.AttributeSetLinks))) } AttributeSetLinks</div>
+			@attribute(attr)
 		}
 	</div>
+}
+
+templ attribute(attribute Attribute) {
+	<div>{ strconv.Itoa(int(attribute.ID)) }</div>
+	<div>{ attribute.AISeedQuery }</div>
+	<div>{ attribute.AITask }</div>
+	<div>{ strconv.Itoa(int(attribute.AttributeModelID)) }</div>
+	<div>{ strconv.Itoa(int(len(attribute.AttributeSetLinks))) } AttributeSetLinks</div>
 }
 

@@ -26,7 +26,7 @@ func newAttribute(attributeModels []AttributeModel) templ.Component {
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md w-1/4\"><h1>")
+		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white border border-gray-400 rounded-md\"><h1>")
 		if err != nil {
 			return err
 		}
@@ -222,69 +222,93 @@ func attributes(attributes []Attribute, attributeModels []AttributeModel, messag
 			var_12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div class=\" border border-gray-400 rounded-md w-1/4\">")
+		_, err = templBuffer.WriteString("<div class=\" border border-gray-400 rounded-md\">")
 		if err != nil {
 			return err
 		}
 		for _, attr := range attributes {
-			_, err = templBuffer.WriteString("<div>")
+			err = attribute(attr).Render(ctx, templBuffer)
 			if err != nil {
 				return err
 			}
-			var var_13 string = strconv.Itoa(int(attr.ID))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_13))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_14 string = attr.AISeedQuery
-			_, err = templBuffer.WriteString(templ.EscapeString(var_14))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_15 string = attr.AITask
-			_, err = templBuffer.WriteString(templ.EscapeString(var_15))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_16 string = strconv.Itoa(int(attr.AttributeModelID))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_16))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div> <div>")
-			if err != nil {
-				return err
-			}
-			var var_17 string = strconv.Itoa(int(len(attr.AttributeSetLinks)))
-			_, err = templBuffer.WriteString(templ.EscapeString(var_17))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString(" ")
-			if err != nil {
-				return err
-			}
-			var_18 := `AttributeSetLinks`
-			_, err = templBuffer.WriteString(var_18)
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div>")
-			if err != nil {
-				return err
-			}
+		}
+		_, err = templBuffer.WriteString("</div>")
+		if err != nil {
+			return err
+		}
+		if !templIsBuffer {
+			_, err = templBuffer.WriteTo(w)
+		}
+		return err
+	})
+}
+
+func attribute(attribute Attribute) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+		templBuffer, templIsBuffer := w.(*bytes.Buffer)
+		if !templIsBuffer {
+			templBuffer = templ.GetBuffer()
+			defer templ.ReleaseBuffer(templBuffer)
+		}
+		ctx = templ.InitializeContext(ctx)
+		var_13 := templ.GetChildren(ctx)
+		if var_13 == nil {
+			var_13 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		_, err = templBuffer.WriteString("<div>")
+		if err != nil {
+			return err
+		}
+		var var_14 string = strconv.Itoa(int(attribute.ID))
+		_, err = templBuffer.WriteString(templ.EscapeString(var_14))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div>")
+		if err != nil {
+			return err
+		}
+		var var_15 string = attribute.AISeedQuery
+		_, err = templBuffer.WriteString(templ.EscapeString(var_15))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div>")
+		if err != nil {
+			return err
+		}
+		var var_16 string = attribute.AITask
+		_, err = templBuffer.WriteString(templ.EscapeString(var_16))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div>")
+		if err != nil {
+			return err
+		}
+		var var_17 string = strconv.Itoa(int(attribute.AttributeModelID))
+		_, err = templBuffer.WriteString(templ.EscapeString(var_17))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</div><div>")
+		if err != nil {
+			return err
+		}
+		var var_18 string = strconv.Itoa(int(len(attribute.AttributeSetLinks)))
+		_, err = templBuffer.WriteString(templ.EscapeString(var_18))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" ")
+		if err != nil {
+			return err
+		}
+		var_19 := `AttributeSetLinks`
+		_, err = templBuffer.WriteString(var_19)
+		if err != nil {
+			return err
 		}
 		_, err = templBuffer.WriteString("</div>")
 		if err != nil {

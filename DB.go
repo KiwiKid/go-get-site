@@ -126,8 +126,11 @@ func (p Page) ToProcess() bool {
 const format = "2006-01-02 15:04:05"
 
 func (p Page) PageStatus() string {
-
 	return fmt.Sprintf("[P:%s]", p.DateProcessed.Format(format))
+}
+
+func (p Page) AttributeSetResultId() string {
+	return fmt.Sprintf("attributeSetResultId-%d", p.ID)
 }
 
 type Website struct {

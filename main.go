@@ -875,7 +875,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		}
 
 		selectedAttributeSetIdStr := r.URL.Query().Get("selectedAttributeSetId")
-		selectedAttributeSetId, err := strconv.Atoi(selectedAttributeSetIdStr)
+		selectedAttributeSetId, selectedAttributeSetIdErr := strconv.Atoi(selectedAttributeSetIdStr)
 
 		viewPageSizeStr := r.URL.Query().Get("viewPageSize")
 		viewPageSizeInt, err := strconv.Atoi(viewPageSizeStr)
@@ -974,18 +974,27 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		}
 
 		thisPageUrl := fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
-		prevPageUrl := fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
+		prevPageUrl := fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d", website.ID, page-1, viewPageSize)
 
 		var nextPageUrl string
 		if count.TotalLinks > (page * viewPageSize) {
-			nextPageUrl = fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d", website.ID, page, viewPageSize)
+			nextPageUrl = fmt.Sprintf("/sites/%d/pages?page=%d&pageSize=%d&", website.ID, page, viewPageSize)
 		} else {
 			nextPageUrl = ""
 		}
 
+		if len(selectedAttributeSetIdStr) != 0 {
+			if selectedAttributeSetIdErr != nil {
+				panic(selectedAttributeSetIdErr)
+			}
+			thisPageUrl = fmt.Sprintf("%sselectedAttributeSetId=%b", thisPageUrl, selectedAttributeSetId)
+			prevPageUrl = fmt.Sprintf("%sselectedAttributeSetId=%b", prevPageUrl, selectedAttributeSetId)
+			nextPageUrl = fmt.Sprintf("%sselectedAttributeSetId=%b", nextPageUrl, selectedAttributeSetId)
+		}
+
 		percentage := fmt.Sprintf("%.0f", (float64(prog.Done) / float64(prog.Total) * 100.0))
 		dripLoadStr := fmt.Sprintf("every %dm", dripLoadFreqMin)
-		log.Printf("pagesList length: %d dripLoad %v dripLoadCount %d", len(pagesList), dripLoad, dripLoadCount)
+		log.Printf("pagesList length: %d dripLoad %v dripLoadCount %d selectedAttributeSetId: %d", len(pagesList), dripLoad, dripLoadCount, selectedAttributeSetId)
 
 		attributeSets, modelsErr := db.ListAllAttributeSets()
 		if modelsErr != nil {

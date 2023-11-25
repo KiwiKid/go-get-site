@@ -4,23 +4,30 @@ import (
 	"strconv"
 )
 
-templ attributeSetSelect(attributeSets []AttributeSet) {
-	<div>attributeSetSelect</div>
-
-	<select>
-		for _, att := range attributeSets {
-			<option value={ strconv.Itoa(int(att.ID)) }>{ att.Name }</option>
-		}
+templ attributeSetSelect(attributeSets []AttributeSet, url string) {
+	<select 
+	id="selectedAttributeSetId"
+	name="selectedAttributeSetId"
+	hx-trigger="change"
+	hx-target="#container"
+	hx-get={url} 
+	hx-include="this"
+	 >
+	 <span class="htmx-indicator">@spinner()</span>
+	<option value="" selected>--Please choose an option--</option>
+	for _, att := range attributeSets {
+		<option value={ strconv.Itoa(int(att.ID)) }>{ att.Name }</option>
+	}
 	</select>
 }
 
-templ attributeSetSelected(attribute AttributeSet){
-	<div> { attribute.Name } </div>
+templ attributeSetSelected(attribute AttributeSet) {
+	<div>{ attribute.Name }</div>
 }
 
 templ newAttributeSet() {
-	<div class="p-4 shadow rounded-lg bg-white  border border-gray-400 rounded-md w-1/4">
-		<form hx-post="/aset" class="space-y-4 ">
+	<div class="p-4 shadow rounded-lg bg-white  border border-gray-400 rounded-md">
+		<form hx-post="/aset" hx-target="#aset-container" class="space-y-4 ">
 			<div>
 				<label for="setName" class="block text-sm font-medium text-gray-700">Attribute Set Name</label>
 				<input
@@ -52,22 +59,33 @@ templ attributeSetContainer(attributes []Attribute, attributeSets []AttributeSet
 }
 
 templ attributeSetList(attributes []Attribute, attributeSets []AttributeSet, attributeModels []AttributeModel, message string) {
-	<div>
-		{ message }
+	<div class="p-4">
+		<p class="text-lg font-semibold text-gray-700">{ message }</p>
 	</div>
-	@newAttributeSet()
-	@newAttribute(attributeModels)
-	for _, aset := range attributeSets {
-		<div class=" border border-gray-400 rounded-md w-1/4">
-			<h1>{ aset.Name }</h1>
-			Attributes:
-			for _, a := range aset.AttributeSetLinks {
-				<div>{ strconv.Itoa(int(a.AttributeID)) }</div>
-
-			}
-			@createAttributeSetLink(attributes, aset)
+		
+	<div class="flex flex-grow -mx-2">
+		<div class="w-full px-2 mb-4">
+			@newAttributeSet()
+			@newAttribute(attributeModels)
 		</div>
-	}
+		<div class="w-full px-2 mb-4">
+			for _, aset := range attributeSets {
+				<div class="border border-gray-400 rounded-md">
+					<h1 class="text-xl font-bold text-gray-800 mb-2">{ aset.Name }</h1>
+					Attributes:
+					for _, alink := range aset.AttributeSetLinks {
+						for _, a := range attributes {
+							if a.ID == alink.ID {
+								@attribute(a)
+							}
+						}
+						
+					}
+					@createAttributeSetLink(attributes, aset)
+				</div>
+			}
+		</div>
+	</div>
 }
 
 templ createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) {
