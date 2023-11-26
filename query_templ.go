@@ -292,7 +292,7 @@ func query(threadId uint, websiteId uint, newChatUrl string, chats []Chat) templ
 			if err != nil {
 				return err
 			}
-			var var_19 string = strconv.Itoa(int(item.WebsiteId))
+			var var_19 string = strconv.Itoa(int(item.WebsiteID))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_19))
 			if err != nil {
 				return err

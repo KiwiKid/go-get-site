@@ -2,9 +2,9 @@ package main
 
 templ attributeSetResult(attributeResults []AttributeResult) {
 	for _, ar := range attributeResults {
-		<div id={ AttributeSetResultId(ar.WebsiteID, ar.PageID) } hx-swap-oob="true">
-        OUT OF BAND UPDATE!
-        </div>
+		<div id={ AttributeSetResultId(ar.WebsiteID, ar.PageID, ar.AttributeSetID) } hx-swap-oob="true">
+			OUT OF BAND UPDATE!
+		</div>
 	}
 }
 

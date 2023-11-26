@@ -118,7 +118,7 @@ func chat(threadId string, websiteId string, newChatUrl string, chats []Chat) te
 			if err != nil {
 				return err
 			}
-			var var_7 string = strconv.Itoa(int(item.WebsiteId))
+			var var_7 string = strconv.Itoa(int(item.WebsiteID))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_7))
 			if err != nil {
 				return err

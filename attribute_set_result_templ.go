@@ -27,7 +27,7 @@ func attributeSetResult(attributeResults []AttributeResult) templ.Component {
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString(templ.EscapeString(AttributeSetResultId(ar.WebsiteID, ar.PageID)))
+			_, err = templBuffer.WriteString(templ.EscapeString(AttributeSetResultId(ar.WebsiteID, ar.PageID, ar.AttributeSetID)))
 			if err != nil {
 				return err
 			}

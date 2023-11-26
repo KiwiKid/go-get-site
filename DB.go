@@ -33,7 +33,7 @@ type Page struct {
 	DateCreated   time.Time       `gorm:"type:timestamp"`
 	DateUpdated   time.Time       `gorm:"type:timestamp"`
 	DateProcessed time.Time       `gorm:"type:timestamp"`
-	WebsiteId     uint            `gorm:"index;not null"`
+	WebsiteID     uint            `gorm:"index;not null"`
 
 	_ struct{} `gorm:"unique_index:idx_website_url;column:website_id;column:url"`
 }
@@ -41,7 +41,7 @@ type Page struct {
 type PageBlock struct {
 	ID        uint   `gorm:"primary_key"`
 	PageID    uint   `gorm:"index;not null"`
-	WebsiteId uint   `gorm:"index;not null"`
+	WebsiteID uint   `gorm:"index;not null"`
 	Content   string `gorm:"type:text"`
 	Embedding []byte `gorm:"-"`
 }
@@ -129,8 +129,16 @@ func (p Page) PageStatus() string {
 	return fmt.Sprintf("[P:%s]", p.DateProcessed.Format(format))
 }
 
-func AttributeSetResultId(webiteId uint, pageId uint) string {
-	return fmt.Sprintf("attributeSetResultId-%d-%d", webiteId, pageId)
+func (p Page) GoodForSearch() bool {
+	if len(p.Content) > 0 {
+		return true
+	}
+
+	return false
+}
+
+func AttributeSetResultId(webiteId uint, pageId uint, attributeSetId uint) string {
+	return fmt.Sprintf("attributeSetResultId-%d-%d-%d", webiteId, pageId, attributeSetId)
 }
 
 type Website struct {
@@ -185,14 +193,14 @@ type Attribute struct {
 }
 
 type AttributeResult struct {
-	ID                uint         `gorm:"primary_key"`
-	PageID            uint         `gorm:"foreignkey:PageID"`
-	RelatedPageBlocks []*PageBlock `gorm:"many2many:page_blocks;"`
-	AttributeSetID    uint         `gorm:"index"`
-	WebsiteID         uint         `gorm:"index"`
-	AttributeID       uint         `gorm:"index"`
-	AttributeResult   string       `gorm:"type:text"`
-	DateCreated       time.Time    `gorm:"type:timestamp"`
+	ID                uint      `gorm:"primary_key"`
+	PageID            uint      `gorm:"foreignkey:PageID"`
+	RelatedPageBlocks []int     `gorm:"foreignkey:PageBlockID"`
+	AttributeSetID    uint      `gorm:"index"`
+	WebsiteID         uint      `gorm:"index"`
+	AttributeID       uint      `gorm:"index"`
+	AttributeResult   string    `gorm:"type:text"`
+	DateCreated       time.Time `gorm:"type:timestamp"`
 }
 
 func attributeResultURL(websiteID uint, attributeSetID uint) string {
@@ -215,7 +223,7 @@ type Embedding struct {
 type Chat struct {
 	ID          uint      `gorm:"primary_key"`
 	ThreadId    uint      `gorm:"primary_key"`
-	WebsiteId   uint      `gorm:"primary_key"`
+	WebsiteID   uint      `gorm:"primary_key"`
 	Message     string    `gorm:"size:255"`
 	DateCreated time.Time `gorm:"type:timestamp"`
 }
@@ -720,7 +728,7 @@ func (db *DB) UpdatePage(page Page) (bool, error) {
 	log.Printf("Updating page: %s\n content len: %d %s", page.URL, len(page.Content), page.Title)
 	page.DateUpdated = time.Now()
 	page.DateCreated = time.Now()
-	result := db.conn.Model(&page).Where("pgml.page.url = ?", page.URL).Where("pgml.page.website_id= ?", page.WebsiteId).Updates(page)
+	result := db.conn.Model(&page).Where("pgml.page.url = ?", page.URL).Where("pgml.page.website_id= ?", page.WebsiteID).Updates(page)
 
 	if result.Error != nil {
 		return false, result.Error
@@ -953,20 +961,20 @@ func (db *DB) GetRelatedPageBlocks(question string, keywords string, websiteId u
 	for rows.Next() {
 		// var page_cosine_similarity float64
 		var page_cosine_similarity float64
-		var Id int
+		var id int
 		var pageId int
 		var content string
 
 		var url string
 		var keywords string
-		if err := rows.Scan(&Id, &pageId, &content, &url, &keywords, &page_cosine_similarity); err != nil { // Manual scan into individual variables
+		if err := rows.Scan(&id, &pageId, &content, &url, &keywords, &page_cosine_similarity); err != nil { // Manual scan into individual variables
 			return nil, err
 		}
-		log.Printf("brank %v Id %v content %s\n", page_cosine_similarity, Id, content)
+		log.Printf("PageQueryResult id: %d pageID: %d\n", id, pageId)
 		qr := PageQueryResult{URL: url, PageBlockRank: page_cosine_similarity, PageBlock: PageBlock{
-			ID:        uint(Id),
+			ID:        uint(id),
 			PageID:    uint(pageId),
-			WebsiteId: websiteId,
+			WebsiteID: websiteId,
 			Content:   content,
 		}}
 		queryResults = append(queryResults, qr)

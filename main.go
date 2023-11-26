@@ -256,7 +256,7 @@ func presentQuery() http.HandlerFunc {
 				panic(pageErr)
 			}
 
-			websiteIdStr := strconv.Itoa(int(chats[0].WebsiteId))
+			websiteIdStr := strconv.Itoa(int(chats[0].WebsiteID))
 			websiteId, err := stringToUint(websiteIdStr)
 			if websiteIdStr == "" || err != nil {
 				log.Printf("Failed based on websiteId %v", err)
@@ -282,7 +282,7 @@ func presentQuery() http.HandlerFunc {
 				return
 			}
 			query := r.FormValue("query")
-			_, insChatErr := db.InsertChat(Chat{ThreadId: queryId, Message: query, WebsiteId: websiteId})
+			_, insChatErr := db.InsertChat(Chat{ThreadId: queryId, Message: query, WebsiteID: websiteId})
 			if insChatErr != nil {
 				log.Printf("Failed to insert chat %v", insChatErr)
 				http.Error(w, "InsertChat has failed", http.StatusBadRequest)
@@ -328,7 +328,7 @@ func presentQuery() http.HandlerFunc {
 
 			templ.Handler(queryComp).ServeHTTP(w, r)
 
-			//			insAIErr := db.InsertChat(Chat{ThreadId: threadId, Message: queryRes[0].String(), WebsiteId: websiteId})
+			//			insAIErr := db.InsertChat(Chat{ThreadId: threadId, Message: queryRes[0].String(), WebsiteID: websiteId})
 
 			/*if insAIErr != nil {
 				http.Error(w, "insAIErr failed", http.StatusBadRequest)
@@ -473,7 +473,7 @@ func presentPageBlocks() http.HandlerFunc {
 				var pageBlocks []PageBlock
 				for _, blockContent := range blocks {
 					pageBlock := PageBlock{
-						WebsiteId: websiteId,
+						WebsiteID: websiteId,
 						PageID:    pageId,
 						Content:   blockContent,
 					}
@@ -608,7 +608,7 @@ func presentWebsite() http.HandlerFunc {
 					return
 				}
 				emptyLink := []string{}
-				inserPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteId: site.ID, Links: emptyLink})
+				inserPageErr := db.InsertPage(Page{URL: site.BaseUrl, WebsiteID: site.ID, Links: emptyLink})
 				if inserPageErr != nil {
 					http.Error(w, "InsertPage has failed", http.StatusBadRequest)
 					log.Fatalf("InsertPage has failed  %v", inserPageErr)
@@ -723,7 +723,7 @@ func presentWebsite() http.HandlerFunc {
 
 						newEmptyPage := Page{
 							URL:       url,
-							WebsiteId: website.ID,
+							WebsiteID: website.ID,
 							Links:     emptyLink,
 						}
 						insertErr := db.InsertPage(newEmptyPage)
@@ -1279,7 +1279,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 					TidyTitle: website.getTidyTitle(title),
 					Content:   content,
 					Links:     links,
-					WebsiteId: website.ID,
+					WebsiteID: website.ID,
 				}
 				log.Printf("fetchContentFromPages - content len: %d [pagecontent len: %d] ", len(content), len(newPage.Content))
 				// ADD the Page object to the "pages" list
@@ -1316,7 +1316,7 @@ func fetchContentFromPages(ctx context.Context, website Website, pages []Page, r
 
 								newEmptyPage := Page{
 									URL:       link,
-									WebsiteId: website.ID,
+									WebsiteID: website.ID,
 									Links:     emptyLink,
 								}
 								newPages = append(newPages, newEmptyPage)
@@ -1520,6 +1520,11 @@ func presentAttributeSetResult() http.HandlerFunc {
 
 					for _, page := range pages {
 
+						if !page.GoodForSearch() {
+							log.Printf("page notGoodForSearch, %d %s", page.ID, page.URL)
+							continue
+						}
+
 						pageFilter := []uint{}
 						pageFilter = append(pageFilter, page.ID)
 						pageQueryResult, queryWebErr := db.GetRelatedPageBlocks(attr.AISeedQuery, "", websiteId, pageFilter)
@@ -1529,38 +1534,51 @@ func presentAttributeSetResult() http.HandlerFunc {
 							return
 						}
 
-						result := ""
+						if len(pageQueryResult) == 0 {
+							message := fmt.Sprintf("Failed pageQueryResult - no content matching: %s for page:%d and websiteId:%d", attr.AISeedQuery, page.ID, websiteId)
+							log.Print(message)
+							continue
+						} else {
 
-						var pageBlocks []*PageBlock
-						for _, bp := range pageQueryResult {
-							result += bp.PageBlock.Content + "\n"
-							pageBlocks = append(pageBlocks, &bp.PageBlock)
-						}
+							result := fmt.Sprintf(`You are searching the ANSWER to the following QUESTION in the CONTENT below
+						QUESTION: %s
+						`, attr.AISeedQuery)
 
-						prompt := fmt.Sprintf("%d", result)
+							var pageBlocks []int
+							for _, bp := range pageQueryResult {
+								log.Printf("GOT CONTENT MATCHES: %s\n\n%v", bp.PageBlock.Content, bp)
+								result += bp.PageBlock.Content + "\n"
+								pageBlocks = append(pageBlocks, int(bp.PageBlock.ID))
+							}
 
-						oai, err := NewOpenAI()
+							prompt := fmt.Sprintf("CONTENT: %s", result)
 
-						if err != nil {
-							http.Error(w, "Failed NewOpenAI", http.StatusInternalServerError)
-						}
+							oai, err := NewOpenAI()
 
-						res, err := oai.createChatCompletion(prompt)
-						if err != nil {
-							http.Error(w, "Failed createChatCompletion", http.StatusInternalServerError)
-						}
-						createAttrErr := db.CreateAttributeResult(AttributeResult{
-							PageID:            page.ID,
-							WebsiteID:         websiteId,
-							RelatedPageBlocks: pageBlocks,
-							AttributeSetID:    attributeSetId,
-							AttributeID:       attr.ID,
-							AttributeResult:   *res,
-						})
+							if err != nil {
+								http.Error(w, "Failed NewOpenAI", http.StatusInternalServerError)
+							}
 
-						if createAttrErr != nil {
-							log.Printf("Failed to CreateAttributeResult, %v", createAttrErr)
-							http.Error(w, "Failed CreateAttributeResult", http.StatusInternalServerError)
+							res, err := oai.createChatCompletion(prompt)
+							if err != nil {
+								http.Error(w, "Failed createChatCompletion", http.StatusInternalServerError)
+							}
+
+							log.Printf("\npageBlocks: %v\n", pageBlocks)
+
+							createAttrErr := db.CreateAttributeResult(AttributeResult{
+								PageID:            page.ID,
+								WebsiteID:         websiteId,
+								RelatedPageBlocks: pageBlocks,
+								AttributeSetID:    attributeSetId,
+								AttributeID:       attr.ID,
+								AttributeResult:   *res,
+							})
+
+							if createAttrErr != nil {
+								log.Printf("Failed to CreateAttributeResult, %v", createAttrErr)
+								http.Error(w, "Failed CreateAttributeResult", http.StatusInternalServerError)
+							}
 						}
 
 					}
