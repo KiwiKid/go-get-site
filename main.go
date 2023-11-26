@@ -72,12 +72,15 @@ func main() {
 
 	r.HandleFunc("/sites/{websiteId}/pages", handlePages(ctx)).Methods("GET", "POST")
 
+	r.HandleFunc("/sites/{websiteId}/result/{attributeSetId}", presentAttributeSetResult()).Methods("GET", "POST")
+
 	r.Handle("/search", presentQuery()).Methods("GET", "POST")
 	r.Handle("/search/{queryId}", presentQuery()).Methods("GET", "POST")
 
 	//r.Handle("/attributes/models", presentAttributeModels())
 	r.Handle("/aset", presentAttributeSet()).Methods("GET", "POST")
 	r.Handle("/aset/{attributeSetId}", presentAttributeSet()).Methods("GET", "POST")
+
 	r.Handle("/attributes", presentAttribute()).Methods("GET", "POST")
 	//r.Handle("/attributes/{attributeSetId}/attribute/{attributeId}", presentAttribute())
 
@@ -310,16 +313,16 @@ func presentQuery() http.HandlerFunc {
 
 			// Convert each string ID to uint and add to the slice
 
-			log.Print("QueryWebsite. Started")
-			queryRes, queryErr := db.QueryWebsite(query, websiteId, pageIds)
+			log.Print("QueryWebsiteForPages. Started")
+			queryRes, queryErr := db.QueryWebsiteForPages(query, websiteId, pageIds)
 			if queryErr != nil {
-				log.Printf("QueryWebsite. failed - %v", queryErr.Error())
+				log.Printf("QueryWebsiteForPages. failed - %v", queryErr.Error())
 
-				http.Error(w, "QueryWebsite failed queryErr\n\n"+queryErr.Error(), http.StatusBadRequest)
+				http.Error(w, "QueryWebsiteForPages failed queryErr\n\n"+queryErr.Error(), http.StatusBadRequest)
 				return
 			}
 
-			log.Printf("QueryWebsite. End - %s", queryRes)
+			log.Printf("QueryWebsiteForPages. End - %s", queryRes)
 
 			queryComp := queryResult(queryRes, websiteId, query)
 
@@ -875,7 +878,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		}
 
 		selectedAttributeSetIdStr := r.URL.Query().Get("selectedAttributeSetId")
-		selectedAttributeSetId, selectedAttributeSetIdErr := strconv.Atoi(selectedAttributeSetIdStr)
+		selectedAttributeSetId, selectedAttributeSetIdErr := stringToUint(selectedAttributeSetIdStr)
 
 		viewPageSizeStr := r.URL.Query().Get("viewPageSize")
 		viewPageSizeInt, err := strconv.Atoi(viewPageSizeStr)
@@ -1038,7 +1041,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 		pageProcessedAfter = time.Now().Add(-7 * 24 * time.Hour)
 	}
 
-	pagesToProcess, err := db.GetPages(website.ID, page, 1000, processAll, pageProcessedAfter, ignoreWarnings)
+	pagesToProcess, err := db.GetPages(website.ID, page, 1000, processAll, pageProcessedAfter, ignoreWarnings, false)
 	linksAlreadyProcessed, apErr := db.GetCompletedPageUrls(website.ID)
 	for _, url := range linksAlreadyProcessed {
 		addedPagesSet[GetPageDoneCacheKey(website.ID, url)] = struct{}{}
@@ -1460,6 +1463,125 @@ func presentAttribute() http.HandlerFunc {
 
 	}
 
+}
+
+func presentAttributeSetResult() http.HandlerFunc {
+
+	log.Printf("presentAttributeSetResult link")
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		db, err := NewDB()
+		if err != nil {
+			panic(err)
+		}
+
+		vars := mux.Vars(r)
+		attributeSetIdStr := vars["attributeSetId"]
+		attributeSetId, attributeSetIdErr := stringToUint(attributeSetIdStr)
+		if attributeSetIdErr != nil {
+			log.Printf("Failed to stringToUint attributeSetId, %v", err)
+			http.Error(w, "Failed to stringToUint attributeSetId", http.StatusInternalServerError)
+		}
+
+		websiteIdStr := vars["websiteId"]
+		websiteId, err := stringToUint(websiteIdStr)
+		if err != nil {
+			log.Printf("Failed to stringToUint websiteId, %v", err)
+			http.Error(w, "Failed to stringToUint websiteId", http.StatusInternalServerError)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			{
+				attributes, err := db.ListAttributesForSet(attributeSetId)
+				if err != nil {
+					log.Printf("Failed to ListAttributesForSet, %v", err)
+					http.Error(w, "Failed ListAttributesForSet ", http.StatusInternalServerError)
+				}
+
+				if len(attributes) == 0 {
+					log.Printf("No attribute in set")
+					http.Error(w, "Add attrtibutes to the set ", http.StatusInternalServerError)
+				}
+
+				for _, attr := range attributes {
+					pages, pageGetErr := db.GetPages(websiteId, 1, 3, true, time.Now(), true, true)
+
+					if pageGetErr != nil {
+						log.Printf("Failed to GetPages, %v", pageGetErr)
+						http.Error(w, "Failed to GetPages", http.StatusInternalServerError)
+					}
+
+					if len(pages) == 0 {
+						log.Printf("No pages on website?")
+						http.Error(w, "Add pages to the website ", http.StatusInternalServerError)
+					}
+
+					for _, page := range pages {
+
+						pageFilter := []uint{}
+						pageFilter = append(pageFilter, page.ID)
+						pageQueryResult, queryWebErr := db.GetRelatedPageBlocks(attr.AISeedQuery, "", websiteId, pageFilter)
+						if queryWebErr != nil {
+							log.Printf("Failed to GetRelatedPageBlocks, %v", queryWebErr)
+							http.Error(w, "Failed to stringToUint websiteId", http.StatusInternalServerError)
+							return
+						}
+
+						result := ""
+
+						var pageBlocks []*PageBlock
+						for _, bp := range pageQueryResult {
+							result += bp.PageBlock.Content + "\n"
+							pageBlocks = append(pageBlocks, &bp.PageBlock)
+						}
+
+						prompt := fmt.Sprintf("%d", result)
+
+						oai, err := NewOpenAI()
+
+						if err != nil {
+							http.Error(w, "Failed NewOpenAI", http.StatusInternalServerError)
+						}
+
+						res, err := oai.createChatCompletion(prompt)
+						if err != nil {
+							http.Error(w, "Failed createChatCompletion", http.StatusInternalServerError)
+						}
+						createAttrErr := db.CreateAttributeResult(AttributeResult{
+							PageID:            page.ID,
+							WebsiteID:         websiteId,
+							RelatedPageBlocks: pageBlocks,
+							AttributeSetID:    attributeSetId,
+							AttributeID:       attr.ID,
+							AttributeResult:   *res,
+						})
+
+						if createAttrErr != nil {
+							log.Printf("Failed to CreateAttributeResult, %v", createAttrErr)
+							http.Error(w, "Failed CreateAttributeResult", http.StatusInternalServerError)
+						}
+
+					}
+
+				}
+			}
+		case http.MethodGet:
+			{
+				setResult, err := db.ListAttributeResults(attributeSetId, websiteId)
+				if err != nil {
+					log.Printf("Failed to ListAttributeResults, %v", err)
+					http.Error(w, "Failed to ListAttributeResults", http.StatusInternalServerError)
+					return
+				}
+				setListContainerComp := attributeSetResult(setResult)
+
+				templ.Handler(setListContainerComp).ServeHTTP(w, r)
+			}
+		}
+
+	}
 }
 
 func presentAttributeSet() http.HandlerFunc {

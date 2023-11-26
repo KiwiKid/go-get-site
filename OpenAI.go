@@ -1,4 +1,4 @@
-/*package main
+package main
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type OpenAI struct {
 	client *openai.Client
 }
 
-type Question struct {
+type AIQuestion struct {
 	Question           string `json:"question"`
 	CorrectAnswer      string `json:"correct_answer"`
 	IncorrectAnswerOne string `json:"incorrect_answer_one"`
@@ -38,6 +38,33 @@ func NewOpenAI() (*OpenAI, error) {
 	client := openai.NewClient(openAIKey)
 
 	return &OpenAI{client: client}, nil
+}
+
+func (oai *OpenAI) createChatCompletion(content string) (*string, error) {
+
+	fmt.Printf("ChatCompletion request %s", content)
+
+	resp, err := oai.client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Model: openai.GPT3Dot5Turbo,
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: content,
+				},
+			},
+		},
+	)
+
+	if err != nil {
+		fmt.Printf("ChatCompletion error: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("ChatCompletion result %s", resp.Choices[0].Message.Content)
+
+	return &resp.Choices[0].Message.Content, nil
 }
 
 func (oai *OpenAI) generateQuestions(content string, startIndex uint, endIndex uint) (*QuestionResult, error) {
@@ -118,4 +145,3 @@ func (oai *OpenAI) generateQuestions(content string, startIndex uint, endIndex u
 
 	return &result, nil
 }
-*/

@@ -129,8 +129,8 @@ func (p Page) PageStatus() string {
 	return fmt.Sprintf("[P:%s]", p.DateProcessed.Format(format))
 }
 
-func (p Page) AttributeSetResultId() string {
-	return fmt.Sprintf("attributeSetResultId-%d", p.ID)
+func AttributeSetResultId(webiteId uint, pageId uint) string {
+	return fmt.Sprintf("attributeSetResultId-%d-%d", webiteId, pageId)
 }
 
 type Website struct {
@@ -185,13 +185,22 @@ type Attribute struct {
 }
 
 type AttributeResult struct {
-	ID              uint      `gorm:"primary_key"`
-	PageID          uint      `gorm:"index"`
-	PageBlockID     uint      `gorm:"index"`
-	WebsiteID       uint      `gorm:"index"`
-	AttributeID     uint      `gorm:"index"`
-	AttributeResult string    `gorm:"type:text"`
-	DateCreated     time.Time `gorm:"type:timestamp"`
+	ID                uint         `gorm:"primary_key"`
+	PageID            uint         `gorm:"foreignkey:PageID"`
+	RelatedPageBlocks []*PageBlock `gorm:"many2many:page_blocks;"`
+	AttributeSetID    uint         `gorm:"index"`
+	WebsiteID         uint         `gorm:"index"`
+	AttributeID       uint         `gorm:"index"`
+	AttributeResult   string       `gorm:"type:text"`
+	DateCreated       time.Time    `gorm:"type:timestamp"`
+}
+
+func attributeResultURL(websiteID uint, attributeSetID uint) string {
+	return fmt.Sprintf("/sites/%d/result/%d", websiteID, attributeSetID)
+}
+
+func (ar *AttributeResult) attributeResultID() string {
+	return fmt.Sprintf("aset-result-%d", ar.ID)
 }
 
 /*
@@ -241,7 +250,6 @@ func questionImprovement(websiteId uint, pageId uint, pageBlockId uint, question
 	} else {
 		return fmt.Sprintf("/sites/%d/pages/%d/blocks/%d/questions/%d/improved", websiteId, pageId, pageBlockId, questionId)
 	}
-
 }
 
 func websitePageBlockURL(websiteId uint, pageId uint, pageBlockId uint) string {
@@ -737,7 +745,7 @@ func (db *DB) ListWebsites() ([]Website, error) {
 	return websites, nil
 }
 
-func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterProcessDate time.Time, ignoreWarnings bool) ([]Page, error) {
+func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterProcessDate time.Time, ignoreWarnings bool, requireContent bool) ([]Page, error) {
 	if limit <= 0 {
 		return nil, errors.New("invalid limit value")
 	}
@@ -755,6 +763,10 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 			query = query.Where("LENGTH(warning) = 0")
 		}
 		//	query = query.Where("date_processed < ?", afterProcessDate)
+	}
+
+	if requireContent {
+		query = query.Where("LENGTH(content) > 0")
 	}
 
 	var pages []Page
@@ -880,21 +892,21 @@ func (db *DB) ListChatThreads() ([]ChatThread, error) {
 	return chatThreads, nil
 }
 
+func (qr WebsiteQueryResult) String() string {
+	return qr.Content + " PageRank:" + strconv.FormatFloat(qr.PageRank, 'f', -1, 64)
+}
+
 type PageQueryResult struct {
-	ID        int
-	Content   string
-	TidyTitle string
-	URL       string
-	Keywords  string
-	BlockRank float64
-	PageRank  float64
+	ID int
+	//PageID        uint `gorm:"index"` // Foreign key to Page URL
+	//PageBlockID   uint `gorm:"index"` // Foreign key to Page URL
+	//Content       string
+	URL           string
+	PageBlockRank float64
+	PageBlock     PageBlock
 }
 
-func (qr PageQueryResult) String() string {
-	return qr.Content + " PageRank:" + strconv.FormatFloat(qr.PageRank, 'f', -1, 64) + " BlockRank:" + strconv.FormatFloat(qr.BlockRank, 'f', -1, 64)
-}
-
-func (db *DB) QueryWebsite(question string, websiteId uint, pageIds []uint) ([]PageQueryResult, error) {
+func (db *DB) GetRelatedPageBlocks(question string, keywords string, websiteId uint, pageIds []uint) ([]PageQueryResult, error) {
 	var queryResults []PageQueryResult
 
 	var pageQuery string
@@ -904,7 +916,86 @@ func (db *DB) QueryWebsite(question string, websiteId uint, pageIds []uint) ([]P
 	}
 
 	if len(pageIds) > 0 {
-		pageQuery = fmt.Sprintf("AND p.id IN ARRAY[%s]", strings.Join(pageIdStrs, ","))
+		pageQuery = fmt.Sprintf("AND p.id IN (%s)", strings.Join(pageIdStrs, ","))
+	} else {
+		pageQuery = ""
+	}
+
+	rawSQL := fmt.Sprintf(`
+    WITH request AS (
+		SELECT pgml.embed(
+			transformer => 'sentence-transformers/multi-qa-MiniLM-L6-cos-v1'::text, 
+			text => $1,
+			kwargs => '{"device": "cpu"}'::jsonb
+		)::vector(384) AS embedding
+	  )
+	  SELECT
+	  	pb.id,
+		p.id,
+		pb.content,
+		p.URL,
+		'' as keywords,
+		p.embedding <=> (SELECT embedding FROM request) AS page_cosine_similarity
+	  FROM page_blocks pb
+	  INNER JOIN pgml.page p ON p.id = pb.page_id
+	  WHERE p.website_id = $2
+	  %s
+	  ORDER BY page_cosine_similarity ASC
+	  LIMIT 10`, pageQuery)
+	// 	p.embedding <=> (SELECT embedding FROM request) AS page_cosine_similarity,
+	rows, err := db.conn.Raw(rawSQL, question, websiteId).Rows() // Here we get the raw rows
+	if err != nil {
+		log.Printf("GetRelatedPageBlocks failed %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		// var page_cosine_similarity float64
+		var page_cosine_similarity float64
+		var Id int
+		var pageId int
+		var content string
+
+		var url string
+		var keywords string
+		if err := rows.Scan(&Id, &pageId, &content, &url, &keywords, &page_cosine_similarity); err != nil { // Manual scan into individual variables
+			return nil, err
+		}
+		log.Printf("brank %v Id %v content %s\n", page_cosine_similarity, Id, content)
+		qr := PageQueryResult{URL: url, PageBlockRank: page_cosine_similarity, PageBlock: PageBlock{
+			ID:        uint(Id),
+			PageID:    uint(pageId),
+			WebsiteId: websiteId,
+			Content:   content,
+		}}
+		queryResults = append(queryResults, qr)
+	}
+
+	return queryResults, nil
+
+}
+
+type WebsiteQueryResult struct {
+	ID        int
+	Content   string
+	TidyTitle string
+	URL       string
+	Keywords  string
+	PageRank  float64
+}
+
+func (db *DB) QueryWebsiteForPages(question string, websiteId uint, pageIds []uint) ([]WebsiteQueryResult, error) {
+	var queryResults []WebsiteQueryResult
+
+	var pageQuery string
+	var pageIdStrs []string
+	for _, id := range pageIds {
+		pageIdStrs = append(pageIdStrs, strconv.Itoa(int(id)))
+	}
+
+	if len(pageIds) > 0 {
+		pageQuery = fmt.Sprintf("AND p.id IN %s]", strings.Join(pageIdStrs, ","))
 	} else {
 		pageQuery = ""
 	}
@@ -949,7 +1040,7 @@ func (db *DB) QueryWebsite(question string, websiteId uint, pageIds []uint) ([]P
 			return nil, err
 		}
 		log.Printf("brank %v Id %v content %s\n", page_cosine_similarity, Id, content)
-		qr := PageQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, PageRank: page_cosine_similarity, TidyTitle: tidy_title, BlockRank: 0}
+		qr := WebsiteQueryResult{ID: Id, Content: content, URL: url, Keywords: keywords, PageRank: page_cosine_similarity, TidyTitle: tidy_title}
 		queryResults = append(queryResults, qr)
 	}
 
@@ -1074,9 +1165,11 @@ func (db *DB) DeleteAttributeResult(id uint) error {
 	return nil
 }
 
-func (db *DB) ListAttributeResults() ([]AttributeResult, error) {
+func (db *DB) ListAttributeResults(attributeSet uint, websiteId uint) ([]AttributeResult, error) {
 	var results []AttributeResult
-	err := db.conn.Find(&results).Error
+	err := db.conn.Find(&results).
+		Where("attribute_results.website_id = ?", websiteId).
+		Error
 	if err != nil {
 		return nil, err
 	}
