@@ -8,7 +8,7 @@ templ attributeSetSelect(attributeSets []AttributeSet, url string) {
 	<select
  		id="selectedAttributeSetId"
  		name="selectedAttributeSetId"
- 		class="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+ 		class="bg-white text-gray-700 p-4 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
  		hx-trigger="change"
  		hx-target="#container"
  		hx-get={ url }
@@ -92,7 +92,7 @@ templ createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) 
 		<form hx-post={ attributeSetURL(attributeSet.ID) } hx-target="#aset-container" class="space-y-4">
 			<div>
 				<label for="attributeId" class="block text-sm font-medium text-gray-700">Select Attribute</label>
-				<select name="attributeId" id="attributeId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+				<select name="attributeId" id="attributeId" class="mt-1 block w-full p-4 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
 					for _, a := range attributes {
 						<option value={ strconv.Itoa(int(a.ID)) }>{ a.AISeedQuery }</option>
 					}

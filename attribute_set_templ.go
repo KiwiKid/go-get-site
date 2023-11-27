@@ -26,7 +26,7 @@ func attributeSetSelect(attributeSets []AttributeSet, url string) templ.Componen
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<select id=\"selectedAttributeSetId\" name=\"selectedAttributeSetId\" class=\"bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50\" hx-trigger=\"change\" hx-target=\"#container\" hx-get=\"")
+		_, err = templBuffer.WriteString("<select id=\"selectedAttributeSetId\" name=\"selectedAttributeSetId\" class=\"bg-white text-gray-700 p-4 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50\" hx-trigger=\"change\" hx-target=\"#container\" hx-get=\"")
 		if err != nil {
 			return err
 		}
@@ -341,7 +341,7 @@ func createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) t
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</label><select name=\"attributeId\" id=\"attributeId\" class=\"mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\">")
+		_, err = templBuffer.WriteString("</label><select name=\"attributeId\" id=\"attributeId\" class=\"mt-1 block w-full p-4 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\">")
 		if err != nil {
 			return err
 		}
