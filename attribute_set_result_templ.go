@@ -35,7 +35,7 @@ func attributeSetResult(attributeResults []AttributeResult) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_2 string = attributeResults.Message
+			var var_2 string = ar.AttributeResult
 			_, err = templBuffer.WriteString(templ.EscapeString(var_2))
 			if err != nil {
 				return err

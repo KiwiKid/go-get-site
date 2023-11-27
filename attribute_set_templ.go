@@ -26,7 +26,7 @@ func attributeSetSelect(attributeSets []AttributeSet, url string) templ.Componen
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<select id=\"selectedAttributeSetId\" name=\"selectedAttributeSetId\" hx-trigger=\"change\" hx-target=\"#container\" hx-get=\"")
+		_, err = templBuffer.WriteString("<select id=\"selectedAttributeSetId\" name=\"selectedAttributeSetId\" class=\"bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50\" hx-trigger=\"change\" hx-target=\"#container\" hx-get=\"")
 		if err != nil {
 			return err
 		}
@@ -42,11 +42,11 @@ func attributeSetSelect(attributeSets []AttributeSet, url string) templ.Componen
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</span><option value=\"\" selected>")
+		_, err = templBuffer.WriteString("</span><option value=\"\" selected class=\"text-gray-500\">")
 		if err != nil {
 			return err
 		}
-		var_2 := `--Please choose an option--`
+		var_2 := `--Select a different attribute set--`
 		_, err = templBuffer.WriteString(var_2)
 		if err != nil {
 			return err
@@ -64,7 +64,7 @@ func attributeSetSelect(attributeSets []AttributeSet, url string) templ.Componen
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\">")
+			_, err = templBuffer.WriteString("\" class=\"text-gray-700\">")
 			if err != nil {
 				return err
 			}

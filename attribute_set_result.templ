@@ -3,7 +3,7 @@ package main
 templ attributeSetResult(attributeResults []AttributeResult) {
 	for _, ar := range attributeResults {
 		<div id={ AttributeSetResultId(ar.WebsiteID, ar.PageID, ar.AttributeSetID) } hx-swap-oob="true" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-			{ attributeResults.Message }
+			{ ar.AttributeResult }
 		</div>
 	}
 }

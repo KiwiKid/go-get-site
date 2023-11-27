@@ -5,19 +5,20 @@ import (
 )
 
 templ attributeSetSelect(attributeSets []AttributeSet, url string) {
-	<select 
-	id="selectedAttributeSetId"
-	name="selectedAttributeSetId"
-	hx-trigger="change"
-	hx-target="#container"
-	hx-get={url} 
-	hx-include="this"
-	 >
-	 <span class="htmx-indicator">@spinner()</span>
-	<option value="" selected>--Please choose an option--</option>
-	for _, att := range attributeSets {
-		<option value={ strconv.Itoa(int(att.ID)) }>{ att.Name }</option>
-	}
+	<select
+ 		id="selectedAttributeSetId"
+ 		name="selectedAttributeSetId"
+ 		class="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+ 		hx-trigger="change"
+ 		hx-target="#container"
+ 		hx-get={ url }
+ 		hx-include="this"
+	>
+		<span class="htmx-indicator">@spinner()</span>
+		<option value="" selected class="text-gray-500">--Select a different attribute set--</option>
+		for _, att := range attributeSets {
+			<option value={ strconv.Itoa(int(att.ID)) } class="text-gray-700">{ att.Name }</option>
+		}
 	</select>
 }
 
@@ -62,7 +63,6 @@ templ attributeSetList(attributes []Attribute, attributeSets []AttributeSet, att
 	<div class="p-4">
 		<p class="text-lg font-semibold text-gray-700">{ message }</p>
 	</div>
-		
 	<div class="flex flex-grow -mx-2">
 		<div class="w-full px-2 mb-4">
 			@newAttributeSet()
@@ -79,7 +79,6 @@ templ attributeSetList(attributes []Attribute, attributeSets []AttributeSet, att
 								@attribute(a)
 							}
 						}
-						
 					}
 					@createAttributeSetLink(attributes, aset)
 				</div>

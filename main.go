@@ -1623,9 +1623,9 @@ func presentAttributeSetResult() http.HandlerFunc {
 
 		setResult, err := db.ListAttributeResults(attributeSetId, websiteId)
 		if err != nil {
-			log.Printf("Failed to ListAttributeResults, %v", err)
+			var message = fmt.Sprintf("Failed to ListAttributeResults, %v", err)
 
-			err := attributeSetErrorGeneral(websiteId, attributeSetId)
+			err := attributeSetErrorGeneral(websiteId, attributeSetId, message)
 			templ.Handler(err).ServeHTTP(w, r)
 			http.Error(w, "Failed to ListAttributeResults", http.StatusInternalServerError)
 			return
