@@ -42,7 +42,7 @@ func NewOpenAI() (*OpenAI, error) {
 
 func (oai *OpenAI) createChatCompletion(content string) (*string, error) {
 
-	fmt.Printf("ChatCompletion request %s\n", content)
+	fmt.Printf("ChatCompletion request %s\n\n", content)
 
 	resp, err := oai.client.CreateChatCompletion(
 		context.Background(),

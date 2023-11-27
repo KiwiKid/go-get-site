@@ -822,8 +822,16 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
+			_, err = templBuffer.WriteString(" ")
+			if err != nil {
+				return err
+			}
 			var var_52 string = strconv.Itoa(int(selectedAttributeSetId))
 			_, err = templBuffer.WriteString(templ.EscapeString(var_52))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" ")
 			if err != nil {
 				return err
 			}
@@ -840,7 +848,15 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("</span></button></form>")
+			_, err = templBuffer.WriteString("</span></button><div id=\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(templ.EscapeString(AttributeSetResultGeneralId(website.ID, selectedAttributeSetId)))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\"></div></form>")
 			if err != nil {
 				return err
 			}

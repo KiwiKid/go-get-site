@@ -1465,6 +1465,13 @@ func presentAttribute() http.HandlerFunc {
 
 }
 
+type AttributeResultsError struct {
+	PageID         uint
+	WebsiteID      uint
+	AttributeSetID uint
+	Message        string
+}
+
 func presentAttributeSetResult() http.HandlerFunc {
 
 	log.Printf("presentAttributeSetResult link")
@@ -1521,7 +1528,16 @@ func presentAttributeSetResult() http.HandlerFunc {
 					for _, page := range pages {
 
 						if !page.GoodForSearch() {
-							log.Printf("page notGoodForSearch, %d %s", page.ID, page.URL)
+							var message = fmt.Sprintf("page notGoodForSearch (no content) %d %s", page.ID, page.URL)
+
+							setErrorComp := attributeSetError(AttributeResultsError{
+								PageID:         page.ID,
+								WebsiteID:      websiteId,
+								AttributeSetID: attributeSetId,
+								Message:        message,
+							})
+
+							templ.Handler(setErrorComp).ServeHTTP(w, r)
 							continue
 						}
 
@@ -1535,7 +1551,17 @@ func presentAttributeSetResult() http.HandlerFunc {
 						}
 
 						if len(pageQueryResult) == 0 {
-							message := fmt.Sprintf("Failed pageQueryResult - no content matching: %s for page:%d and websiteId:%d", attr.AISeedQuery, page.ID, websiteId)
+							message := fmt.Sprintf("Failed pageQueryResult (no page blocks?) - no content matching: %s for page:%d and websiteId:%d", attr.AISeedQuery, page.ID, websiteId)
+
+							setErrorComp := attributeSetError(AttributeResultsError{
+								PageID:         page.ID,
+								WebsiteID:      websiteId,
+								AttributeSetID: attributeSetId,
+								Message:        message,
+							})
+
+							templ.Handler(setErrorComp).ServeHTTP(w, r)
+
 							log.Print(message)
 							continue
 						} else {
@@ -1544,11 +1570,11 @@ func presentAttributeSetResult() http.HandlerFunc {
 						QUESTION: %s
 						`, attr.AISeedQuery)
 
-							var pageBlocks []int
+							var pageBlocksIds = ""
 							for _, bp := range pageQueryResult {
 								log.Printf("GOT CONTENT MATCHES: %s\n\n%v", bp.PageBlock.Content, bp)
 								result += bp.PageBlock.Content + "\n"
-								pageBlocks = append(pageBlocks, int(bp.PageBlock.ID))
+								pageBlocksIds = fmt.Sprintf("%s,%d", pageBlocksIds, bp.PageBlock.ID)
 							}
 
 							prompt := fmt.Sprintf("CONTENT: %s", result)
@@ -1564,15 +1590,15 @@ func presentAttributeSetResult() http.HandlerFunc {
 								http.Error(w, "Failed createChatCompletion", http.StatusInternalServerError)
 							}
 
-							log.Printf("\npageBlocks: %v\n", pageBlocks)
+							log.Printf("pageBlocksIds: %s\n", pageBlocksIds)
 
 							createAttrErr := db.CreateAttributeResult(AttributeResult{
-								PageID:            page.ID,
-								WebsiteID:         websiteId,
-								RelatedPageBlocks: pageBlocks,
-								AttributeSetID:    attributeSetId,
-								AttributeID:       attr.ID,
-								AttributeResult:   *res,
+								PageID:          page.ID,
+								WebsiteID:       websiteId,
+								PageBlockIDsStr: pageBlocksIds,
+								AttributeSetID:  attributeSetId,
+								AttributeID:     attr.ID,
+								AttributeResult: *res,
 							})
 
 							if createAttrErr != nil {
@@ -1587,17 +1613,27 @@ func presentAttributeSetResult() http.HandlerFunc {
 			}
 		case http.MethodGet:
 			{
-				setResult, err := db.ListAttributeResults(attributeSetId, websiteId)
-				if err != nil {
-					log.Printf("Failed to ListAttributeResults, %v", err)
-					http.Error(w, "Failed to ListAttributeResults", http.StatusInternalServerError)
-					return
-				}
-				setListContainerComp := attributeSetResult(setResult)
 
-				templ.Handler(setListContainerComp).ServeHTTP(w, r)
 			}
+		default:
+			log.Printf("Unsupported method")
+			http.Error(w, "Unsupported method", http.StatusInternalServerError)
+			return
 		}
+
+		setResult, err := db.ListAttributeResults(attributeSetId, websiteId)
+		if err != nil {
+			log.Printf("Failed to ListAttributeResults, %v", err)
+
+			err := attributeSetErrorGeneral(websiteId, attributeSetId)
+			templ.Handler(err).ServeHTTP(w, r)
+			http.Error(w, "Failed to ListAttributeResults", http.StatusInternalServerError)
+			return
+		}
+
+		setListContainerComp := attributeSetResult(setResult)
+
+		templ.Handler(setListContainerComp).ServeHTTP(w, r)
 
 	}
 }

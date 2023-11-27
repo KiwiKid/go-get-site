@@ -2,9 +2,21 @@ package main
 
 templ attributeSetResult(attributeResults []AttributeResult) {
 	for _, ar := range attributeResults {
-		<div id={ AttributeSetResultId(ar.WebsiteID, ar.PageID, ar.AttributeSetID) } hx-swap-oob="true">
-			OUT OF BAND UPDATE!
+		<div id={ AttributeSetResultId(ar.WebsiteID, ar.PageID, ar.AttributeSetID) } hx-swap-oob="true" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+			{ attributeResults.Message }
 		</div>
 	}
+}
+
+templ attributeSetError(attributeResultsError AttributeResultsError) {
+	<div id={ AttributeSetResultId(attributeResultsError.WebsiteID, attributeResultsError.PageID, attributeResultsError.AttributeSetID) } hx-swap-oob="true" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+		{ attributeResultsError.Message }
+	</div>
+}
+
+templ attributeSetErrorGeneral(WebsiteID uint, AttributeSetId uint, Message string) {
+	<div id={ AttributeSetResultGeneralId(WebsiteID, AttributeSetId) } hx-swap-oob="true" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+		{ Message }
+	</div>
 }
 

@@ -141,6 +141,10 @@ func AttributeSetResultId(webiteId uint, pageId uint, attributeSetId uint) strin
 	return fmt.Sprintf("attributeSetResultId-%d-%d-%d", webiteId, pageId, attributeSetId)
 }
 
+func AttributeSetResultGeneralId(webiteId uint, attributeSetId uint) string {
+	return fmt.Sprintf("attributeSetResultId-%d-%d", webiteId, attributeSetId)
+}
+
 type Website struct {
 	ID                       uint      `gorm:"primary_key"`
 	CustomQueryParam         string    `gorm:"size:1024"`
@@ -193,14 +197,14 @@ type Attribute struct {
 }
 
 type AttributeResult struct {
-	ID                uint      `gorm:"primary_key"`
-	PageID            uint      `gorm:"foreignkey:PageID"`
-	RelatedPageBlocks []int     `gorm:"foreignkey:PageBlockID"`
-	AttributeSetID    uint      `gorm:"index"`
-	WebsiteID         uint      `gorm:"index"`
-	AttributeID       uint      `gorm:"index"`
-	AttributeResult   string    `gorm:"type:text"`
-	DateCreated       time.Time `gorm:"type:timestamp"`
+	ID              uint      `gorm:"primary_key"`
+	PageID          uint      `gorm:"foreignkey:PageID"`
+	PageBlockIDsStr string    `gorm:"type:text"`
+	AttributeSetID  uint      `gorm:"index"`
+	WebsiteID       uint      `gorm:"index"`
+	AttributeID     uint      `gorm:"index"`
+	AttributeResult string    `gorm:"type:text"`
+	DateCreated     time.Time `gorm:"type:timestamp"`
 }
 
 func attributeResultURL(websiteID uint, attributeSetID uint) string {
