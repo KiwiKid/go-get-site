@@ -65,6 +65,7 @@ func main() {
 	r.HandleFunc("/sites/{websiteId}/{deleteOpt}", presentWebsite()).Methods("DELETE")
 	r.HandleFunc("/sites/{websiteId}/{deleteOpt}/{pageId}", presentWebsite()).Methods("DELETE")
 
+	r.HandleFunc("/sites/{websiteId}/blocks", presentWebsitePageBlocks()).Methods("GET", "DELETE", "POST")
 	r.HandleFunc("/sites/{websiteId}/pages/{pageId}/blocks", presentPageBlocks()).Methods("GET", "DELETE", "POST")
 	r.HandleFunc("/sites/{websiteId}/pages/{pageId}/blocks/{pageBlockId}", presentPageBlocks()).Methods("GET", "POST")
 
@@ -549,6 +550,48 @@ func presentPageBlocks() http.HandlerFunc {
 		homeComp := pageBlocks(websiteId, pageId, pageBlockList)
 
 		templ.Handler(homeComp).ServeHTTP(w, r)
+	}
+}
+
+func presentWebsitePageBlocks() http.HandlerFunc {
+	log.Print("presentWebsitePageBlocks")
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+		websiteIdStr := vars["websiteId"]
+		websiteId, err := stringToUint(websiteIdStr)
+		if err != nil {
+			log.Printf("websiteId - failed %v", err)
+			http.Error(w, "websiteId stringToUint is failed", http.StatusBadRequest)
+			return
+		}
+
+		db, err := NewDB()
+		if err != nil {
+			log.Printf("NewDB failed %v", err)
+			panic(err)
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			remainingStr := r.FormValue("remaining")
+
+			remaining, err := strconv.Atoi(remainingStr)
+			if err != nil || remaining <= 0 {
+				remaining = 10
+			}
+
+			nextPage, getPageErr := db.GetPages(websiteId, 0, 1, false, time.Now(), false, true)
+
+			if getPageErr != nil {
+				log.Fatalf("Failed to get page %v", getPageErr)
+			}
+
+			pageLoader := pageBlockLoader(websitePageBlocksURL(nextPage[0].WebsiteID, nextPage[0].ID), "load, every 2s", remaining)
+			templ.Handler(pageLoader).ServeHTTP(w, r)
+		}
+
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"strconv"
 )
 
-templ attributeSetSelect(attributeSets []AttributeSet, url string) {
+templ attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttributeSetId *uint) {
 	<select
  		id="selectedAttributeSetId"
  		name="selectedAttributeSetId"
@@ -17,7 +17,13 @@ templ attributeSetSelect(attributeSets []AttributeSet, url string) {
 		<span class="htmx-indicator">@spinner()</span>
 		<option value="" selected class="text-gray-500">--Select a different attribute set--</option>
 		for _, att := range attributeSets {
-			<option value={ strconv.Itoa(int(att.ID)) } class="text-gray-700">{ att.Name }</option>
+			<option
+ 				value={ strconv.Itoa(int(att.ID)) }
+ 				class="text-gray-700"
+ 				if selectedAttributeSetId != nil && *selectedAttributeSetId == att.ID {
+					selected
+				}
+			>{ att.Name }</option>
 		}
 	</select>
 }

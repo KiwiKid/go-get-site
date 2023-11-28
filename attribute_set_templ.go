@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func attributeSetSelect(attributeSets []AttributeSet, url string) templ.Component {
+func attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttributeSetId *uint) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -64,7 +64,17 @@ func attributeSetSelect(attributeSets []AttributeSet, url string) templ.Componen
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("\" class=\"text-gray-700\">")
+			_, err = templBuffer.WriteString("\" class=\"text-gray-700\"")
+			if err != nil {
+				return err
+			}
+			if selectedAttributeSetId != nil && *selectedAttributeSetId == att.ID {
+				_, err = templBuffer.WriteString(" selected")
+				if err != nil {
+					return err
+				}
+			}
+			_, err = templBuffer.WriteString(">")
 			if err != nil {
 				return err
 			}

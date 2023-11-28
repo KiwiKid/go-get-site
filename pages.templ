@@ -2,7 +2,7 @@ package main
 
 import "strconv"
 
-templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, viewPageSize int,  processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool, attributeSets []AttributeSet, selectedAttributeSetId uint, message string) {
+templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, viewPageSize int,  processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool, attributeSets []AttributeSet, selectedAttributeSetId uint,  message string) {
 	<html>
 		@header(website.BaseUrl)
 		<body class="bg-gray-100" id="container">
@@ -207,6 +207,9 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 						</details>
 					</form>
 				</div>
+				<div>
+					<button hx-get={ websiteBlocksURL(website.ID)  }>Start Loading Blocks</button>
+				</div>
 				<div class="flex mb-2 mt-4 font-bold text-sm text-gray-600 border-b-2">
 					<div class="w-1/4 p-2">Status</div>
 					<div class="w-1/4 p-2">Title</div>
@@ -217,10 +220,10 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 						<a href="/aset">(manage)</a>
 						if selectedAttributeSetId == 0 {
 							<div>
-								@attributeSetSelect(attributeSets, pageUrl)
+								@attributeSetSelect(attributeSets, pageUrl, &selectedAttributeSetId)
 							</div>
 						} else {
-							@attributeSetSelect(attributeSets, pageUrl)
+							@attributeSetSelect(attributeSets, pageUrl, &selectedAttributeSetId)
 							<form hx-post={ attributeResultURL(website.ID, selectedAttributeSetId) }>
 								<input required hidden id="selectedAttributeSetId" name="selectedAttributeSetId" value={ strconv.Itoa(int(selectedAttributeSetId)) }/>
 								<button type="submit" class="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -231,6 +234,10 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 								</button>
 								<div id={ AttributeSetResultGeneralId(website.ID, selectedAttributeSetId) }></div>
 							</form>
+							<button hx-get={ attributeResultURL(website.ID, selectedAttributeSetId) } hx-trigger="load">
+								Re-load Attributes
+								<span class="htmx-indicator">@spinner()</span>
+							</button>
 						}
 					</div>
 				</div>

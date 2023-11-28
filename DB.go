@@ -248,6 +248,10 @@ func (w *Website) websiteURLWithPostFix(postfix string) string {
 	return fmt.Sprintf("/sites/%d/%s", w.ID, postfix)
 }
 
+func websiteBlocksURL(websiteId uint) string {
+	return fmt.Sprintf("/sites/%d/blocks", websiteId)
+}
+
 func websitePageBlocksURL(websiteId uint, pageId uint) string {
 	return fmt.Sprintf("/sites/%d/pages/%d/blocks", websiteId, pageId)
 }
