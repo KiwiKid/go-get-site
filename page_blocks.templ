@@ -48,7 +48,6 @@ templ deletePageBlocks(url string) {
 
 templ pageBlockLoader(nextPageUrl string, trigger string, remaining int) {
 	<button
- 		hx-target="#page-block-container"
  		class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring"
  		hx-post={ nextPageUrl }
  		if remaining > 0 {
@@ -58,6 +57,7 @@ templ pageBlockLoader(nextPageUrl string, trigger string, remaining int) {
 		Process Page into Blocks (remaining: 
 		{  strconv.Itoa(remaining) }
 		)
+		<input name="remaining" value={ strconv.Itoa(remaining) }/>
 		<span class="htmx-indicator">@spinner()</span>
 	</button>
 }

@@ -225,7 +225,7 @@ func pageBlockLoader(nextPageUrl string, trigger string, remaining int) templ.Co
 			var_12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<button hx-target=\"#page-block-container\" class=\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring\" hx-post=\"")
+		_, err = templBuffer.WriteString("<button class=\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring\" hx-post=\"")
 		if err != nil {
 			return err
 		}
@@ -278,7 +278,15 @@ func pageBlockLoader(nextPageUrl string, trigger string, remaining int) templ.Co
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(" <span class=\"htmx-indicator\">")
+		_, err = templBuffer.WriteString(" <input name=\"remaining\" value=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(strconv.Itoa(remaining)))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\"><span class=\"htmx-indicator\">")
 		if err != nil {
 			return err
 		}
