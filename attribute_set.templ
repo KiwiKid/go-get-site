@@ -14,8 +14,12 @@ templ attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttri
  		hx-get={ url }
  		hx-include="this"
 	>
-		<span class="htmx-indicator">@spinner()</span>
-		<option value="" selected class="text-gray-500">--Select a different attribute set--</option>
+		<span class="htmx-indicator"
+		>@spinner()</span>
+		<option value="" class="text-gray-500"
+		if selectedAttributeSetId == nil && *selectedAttributeSetId == 0 {
+					selected
+		}>--Select a different attribute set--</option>
 		for _, att := range attributeSets {
 			<option
  				value={ strconv.Itoa(int(att.ID)) }

@@ -582,14 +582,38 @@ func presentWebsitePageBlocks() http.HandlerFunc {
 				remaining = 10
 			}
 
-			nextPage, getPageErr := db.GetPages(websiteId, 0, 1, false, time.Now(), false, true)
+			blockPageStr := r.FormValue("blockPage")
 
-			if getPageErr != nil {
-				log.Fatalf("Failed to get page %v", getPageErr)
+			blockPage, err := strconv.Atoi(blockPageStr)
+			if err != nil || remaining <= 0 {
+				blockPage = 1
 			}
 
-			pageLoader := pageBlockLoader(websitePageBlocksURL(nextPage[0].WebsiteID, nextPage[0].ID), "load, every 2s", remaining)
-			templ.Handler(pageLoader).ServeHTTP(w, r)
+			blockLimitStr := r.FormValue("blockLimit")
+
+			blockLimit, err := strconv.Atoi(blockLimitStr)
+			if err != nil || remaining <= 0 {
+				blockLimit = 10
+			}
+
+			nextPage, getPageErr := db.GetPages(websiteId, blockPage, blockLimit, false, time.Now(), false, 0)
+
+			if getPageErr != nil {
+				message := fmt.Sprintf("Failed to get any pages for  %v", getPageErr)
+
+				pageLoaderInit := pageBlockLoaderInit(websiteBlocksURL(websiteId), message)
+				templ.Handler(pageLoaderInit).ServeHTTP(w, r)
+				return
+			}
+
+			if len(nextPage) > 0 {
+				pageLoader := pageBlockLoader(websitePageBlocksURL(nextPage[0].WebsiteID, nextPage[0].ID), "load, every 2s", remaining)
+				templ.Handler(pageLoader).ServeHTTP(w, r)
+			} else {
+				pageLoaderInit := pageBlockLoaderInit(websiteBlocksURL(websiteId), "No pages found to load blocks for")
+				templ.Handler(pageLoaderInit).ServeHTTP(w, r)
+			}
+
 		}
 
 	}
@@ -1084,7 +1108,7 @@ func processWebsite(ctx context.Context, db DB, website Website, processAll bool
 		pageProcessedAfter = time.Now().Add(-7 * 24 * time.Hour)
 	}
 
-	pagesToProcess, err := db.GetPages(website.ID, page, 1000, processAll, pageProcessedAfter, ignoreWarnings, false)
+	pagesToProcess, err := db.GetPages(website.ID, page, 1000, processAll, pageProcessedAfter, ignoreWarnings, 0)
 	linksAlreadyProcessed, apErr := db.GetCompletedPageUrls(website.ID)
 	for _, url := range linksAlreadyProcessed {
 		addedPagesSet[GetPageDoneCacheKey(website.ID, url)] = struct{}{}
@@ -1556,16 +1580,18 @@ func presentAttributeSetResult() http.HandlerFunc {
 				}
 
 				for _, attr := range attributes {
-					pages, pageGetErr := db.GetPages(websiteId, 1, 3, true, time.Now(), true, true)
+					pages, pageGetErr := db.GetPages(websiteId, 1, 3, true, time.Now(), true, attributeSetId)
 
 					if pageGetErr != nil {
 						log.Printf("Failed to GetPages, %v", pageGetErr)
 						http.Error(w, "Failed to GetPages", http.StatusInternalServerError)
+						return
 					}
 
 					if len(pages) == 0 {
 						log.Printf("No pages on website?")
 						http.Error(w, "Add pages to the website ", http.StatusInternalServerError)
+						return
 					}
 
 					for _, page := range pages {

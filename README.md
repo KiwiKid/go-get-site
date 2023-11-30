@@ -6,8 +6,9 @@ mkdir -p app
 go build -o app/go-get-site && ./app/go-get-site
 
 
-# Build and log to file
-templ generate && go build -o app/go-get-site && ./app/go-get-site &> logs4.txt
+
+templ generate --watch
+go build -o app/go-get-site && ./app/go-get-site
 
 
 # Migrate (only create) new DB changes

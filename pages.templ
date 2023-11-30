@@ -208,7 +208,7 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 					</form>
 				</div>
 				<div>
-					<button hx-get={ websiteBlocksURL(website.ID)  }>Start Loading Blocks</button>
+					@pageBlockLoaderInit(websiteBlocksURL(website.ID), "")
 				</div>
 				<div class="flex mb-2 mt-4 font-bold text-sm text-gray-600 border-b-2">
 					<div class="w-1/4 p-2">Status</div>

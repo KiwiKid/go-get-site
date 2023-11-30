@@ -42,7 +42,17 @@ func attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttrib
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</span><option value=\"\" selected class=\"text-gray-500\">")
+		_, err = templBuffer.WriteString("</span><option value=\"\" class=\"text-gray-500\"")
+		if err != nil {
+			return err
+		}
+		if selectedAttributeSetId == nil && *selectedAttributeSetId == 0 {
+			_, err = templBuffer.WriteString(" selected")
+			if err != nil {
+				return err
+			}
+		}
+		_, err = templBuffer.WriteString(">")
 		if err != nil {
 			return err
 		}

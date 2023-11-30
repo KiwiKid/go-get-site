@@ -292,7 +292,7 @@ func (w *Website) websiteNavigateURL() string {
 	if len(w.StartUrl) == 0 {
 		return fmt.Sprintf("%s?%s", w.BaseUrl, w.CustomQueryParam)
 	} else {
-		return fmt.Sprintf("%s", w.StartUrl)
+		return w.StartUrl
 	}
 }
 
@@ -761,7 +761,7 @@ func (db *DB) ListWebsites() ([]Website, error) {
 	return websites, nil
 }
 
-func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterProcessDate time.Time, ignoreWarnings bool, requireContent bool) ([]Page, error) {
+func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, afterProcessDate time.Time, ignoreWarnings bool, attributeSetId uint) ([]Page, error) {
 	if limit <= 0 {
 		return nil, errors.New("invalid limit value")
 	}
@@ -781,8 +781,11 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 		//	query = query.Where("date_processed < ?", afterProcessDate)
 	}
 
-	if requireContent {
+	if attributeSetId > 0 {
 		query = query.Where("LENGTH(content) > 0")
+
+		query = query.Joins("LEFT JOIN attribute_results ON pgml.pages.id = attribute_results.page_id AND attribute_results.attribute_set_id = ?", attributeSetId).
+			Where("attribute_results.id IS NULL")
 	}
 
 	var pages []Page
