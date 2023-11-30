@@ -226,10 +226,13 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 							@attributeSetSelect(attributeSets, pageUrl, &selectedAttributeSetId)
 							<form hx-post={ attributeResultURL(website.ID, selectedAttributeSetId) }>
 								<input required hidden id="selectedAttributeSetId" name="selectedAttributeSetId" value={ strconv.Itoa(int(selectedAttributeSetId)) }/>
+								<input required hidden id="page" name="page" value={ strconv.Itoa(int(page)) }/>
+								<input required hidden id="page" name="page" value={ strconv.Itoa(int(limit)) }/>
 								<button type="submit" class="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 									Run Attribute Set: (
 									{ strconv.Itoa(int(selectedAttributeSetId)) }
 									)
+									(CONVERT THIS FORM TO BE LOADED VIA A GET REQUEST)
 									<span class="htmx-indicator">@spinner()</span>
 								</button>
 								<div id={ AttributeSetResultGeneralId(website.ID, selectedAttributeSetId) }></div>

@@ -1580,7 +1580,7 @@ func presentAttributeSetResult() http.HandlerFunc {
 				}
 
 				for _, attr := range attributes {
-					pages, pageGetErr := db.GetPages(websiteId, 1, 3, true, time.Now(), true, attributeSetId)
+					pages, pageGetErr := db.GetPages(websiteId, 1, 10, true, time.Now(), true, attributeSetId)
 
 					if pageGetErr != nil {
 						log.Printf("Failed to GetPages, %v", pageGetErr)

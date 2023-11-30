@@ -771,7 +771,7 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 	offset := (page - 1) * limit
 
 	query := db.conn.
-		Where("website_id = ?", websiteId)
+		Where("pgml.page.website_id = ?", websiteId)
 
 	if !processAll {
 		query = query.Where("LENGTH(content) = 0")
@@ -784,7 +784,7 @@ func (db *DB) GetPages(websiteId uint, page int, limit int, processAll bool, aft
 	if attributeSetId > 0 {
 		query = query.Where("LENGTH(content) > 0")
 
-		query = query.Joins("LEFT JOIN attribute_results ON pgml.pages.id = attribute_results.page_id AND attribute_results.attribute_set_id = ?", attributeSetId).
+		query = query.Joins("LEFT JOIN attribute_results ON pgml.page.id = attribute_results.page_id AND attribute_results.attribute_set_id = ?", attributeSetId).
 			Where("attribute_results.id IS NULL")
 	}
 
