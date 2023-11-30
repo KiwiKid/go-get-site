@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttributeSetId *uint) templ.Component {
+func attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttributeSetId uint) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -46,7 +46,7 @@ func attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttrib
 		if err != nil {
 			return err
 		}
-		if selectedAttributeSetId == nil && *selectedAttributeSetId == 0 {
+		if selectedAttributeSetId == 0 {
 			_, err = templBuffer.WriteString(" selected")
 			if err != nil {
 				return err
@@ -78,7 +78,7 @@ func attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttrib
 			if err != nil {
 				return err
 			}
-			if selectedAttributeSetId != nil && *selectedAttributeSetId == att.ID {
+			if selectedAttributeSetId == att.ID {
 				_, err = templBuffer.WriteString(" selected")
 				if err != nil {
 					return err
@@ -109,7 +109,7 @@ func attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttrib
 	})
 }
 
-func attributeSetSelected(attribute AttributeSet) templ.Component {
+func attributeSetSelected(attributeSets []AttributeSet, pageUrl string, websiteId uint, selectedAttributeSetId uint) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -122,14 +122,144 @@ func attributeSetSelected(attribute AttributeSet) templ.Component {
 			var_4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div>")
+		_, err = templBuffer.WriteString("<div class=\"w-1/3 p-2\">")
 		if err != nil {
 			return err
 		}
-		var var_5 string = attribute.Name
-		_, err = templBuffer.WriteString(templ.EscapeString(var_5))
+		var_5 := `Attribute Set:`
+		_, err = templBuffer.WriteString(var_5)
 		if err != nil {
 			return err
+		}
+		_, err = templBuffer.WriteString(" <a href=\"/aset\">")
+		if err != nil {
+			return err
+		}
+		var_6 := `(manage)`
+		_, err = templBuffer.WriteString(var_6)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</a>")
+		if err != nil {
+			return err
+		}
+		if selectedAttributeSetId == 0 {
+			_, err = templBuffer.WriteString("<div>")
+			if err != nil {
+				return err
+			}
+			err = attributeSetSelect(attributeSets, pageUrl, selectedAttributeSetId).Render(ctx, templBuffer)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div>")
+			if err != nil {
+				return err
+			}
+		} else {
+			err = attributeSetSelect(attributeSets, pageUrl, selectedAttributeSetId).Render(ctx, templBuffer)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" <form hx-post=\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(templ.EscapeString(attributeResultURL(websiteId, selectedAttributeSetId)))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\"><input required hidden id=\"selectedAttributeSetId\" name=\"selectedAttributeSetId\" value=\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(templ.EscapeString(strconv.Itoa(int(selectedAttributeSetId))))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\"><!--")
+			if err != nil {
+				return err
+			}
+			var_7 := `<input required hidden id="page" name="page" value={ strconv.Itoa(int(page)) }/>
+				<input required hidden id="page" name="page" value={ strconv.Itoa(int(limit)) }/>`
+			_, err = templBuffer.WriteString(var_7)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("--><button type=\"submit\" class=\"inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500\">")
+			if err != nil {
+				return err
+			}
+			var_8 := `Run Attribute Set: (`
+			_, err = templBuffer.WriteString(var_8)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" ")
+			if err != nil {
+				return err
+			}
+			var var_9 string = strconv.Itoa(int(selectedAttributeSetId))
+			_, err = templBuffer.WriteString(templ.EscapeString(var_9))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" ")
+			if err != nil {
+				return err
+			}
+			var_10 := `)`
+			_, err = templBuffer.WriteString(var_10)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" <span class=\"htmx-indicator\">")
+			if err != nil {
+				return err
+			}
+			err = spinner().Render(ctx, templBuffer)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</span></button><div id=\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(templ.EscapeString(AttributeSetResultGeneralId(websiteId, selectedAttributeSetId)))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\"></div></form> <button hx-get=\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(templ.EscapeString(attributeResultURL(websiteId, selectedAttributeSetId)))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\" hx-trigger=\"load\">")
+			if err != nil {
+				return err
+			}
+			var_11 := `Re-load Attributes`
+			_, err = templBuffer.WriteString(var_11)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" <span class=\"htmx-indicator\">")
+			if err != nil {
+				return err
+			}
+			err = spinner().Render(ctx, templBuffer)
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</span></button>")
+			if err != nil {
+				return err
+			}
 		}
 		_, err = templBuffer.WriteString("</div>")
 		if err != nil {
@@ -150,17 +280,17 @@ func newAttributeSet() templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_6 := templ.GetChildren(ctx)
-		if var_6 == nil {
-			var_6 = templ.NopComponent
+		var_12 := templ.GetChildren(ctx)
+		if var_12 == nil {
+			var_12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white  border border-gray-400 rounded-md\"><form hx-post=\"/aset\" hx-target=\"#aset-container\" class=\"space-y-4 \"><div><label for=\"setName\" class=\"block text-sm font-medium text-gray-700\">")
 		if err != nil {
 			return err
 		}
-		var_7 := `Attribute Set Name`
-		_, err = templBuffer.WriteString(var_7)
+		var_13 := `Attribute Set Name`
+		_, err = templBuffer.WriteString(var_13)
 		if err != nil {
 			return err
 		}
@@ -168,8 +298,8 @@ func newAttributeSet() templ.Component {
 		if err != nil {
 			return err
 		}
-		var_8 := `Create AttributeSet`
-		_, err = templBuffer.WriteString(var_8)
+		var_14 := `Create AttributeSet`
+		_, err = templBuffer.WriteString(var_14)
 		if err != nil {
 			return err
 		}
@@ -200,9 +330,9 @@ func attributeSetContainer(attributes []Attribute, attributeSets []AttributeSet,
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_9 := templ.GetChildren(ctx)
-		if var_9 == nil {
-			var_9 = templ.NopComponent
+		var_15 := templ.GetChildren(ctx)
+		if var_15 == nil {
+			var_15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<html>")
@@ -248,17 +378,17 @@ func attributeSetList(attributes []Attribute, attributeSets []AttributeSet, attr
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_10 := templ.GetChildren(ctx)
-		if var_10 == nil {
-			var_10 = templ.NopComponent
+		var_16 := templ.GetChildren(ctx)
+		if var_16 == nil {
+			var_16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div class=\"p-4\"><p class=\"text-lg font-semibold text-gray-700\">")
 		if err != nil {
 			return err
 		}
-		var var_11 string = message
-		_, err = templBuffer.WriteString(templ.EscapeString(var_11))
+		var var_17 string = message
+		_, err = templBuffer.WriteString(templ.EscapeString(var_17))
 		if err != nil {
 			return err
 		}
@@ -283,8 +413,8 @@ func attributeSetList(attributes []Attribute, attributeSets []AttributeSet, attr
 			if err != nil {
 				return err
 			}
-			var var_12 string = aset.Name
-			_, err = templBuffer.WriteString(templ.EscapeString(var_12))
+			var var_18 string = aset.Name
+			_, err = templBuffer.WriteString(templ.EscapeString(var_18))
 			if err != nil {
 				return err
 			}
@@ -292,8 +422,8 @@ func attributeSetList(attributes []Attribute, attributeSets []AttributeSet, attr
 			if err != nil {
 				return err
 			}
-			var_13 := `Attributes:`
-			_, err = templBuffer.WriteString(var_13)
+			var_19 := `Attributes:`
+			_, err = templBuffer.WriteString(var_19)
 			if err != nil {
 				return err
 			}
@@ -339,9 +469,9 @@ func createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) t
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_14 := templ.GetChildren(ctx)
-		if var_14 == nil {
-			var_14 = templ.NopComponent
+		var_20 := templ.GetChildren(ctx)
+		if var_20 == nil {
+			var_20 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white\"><form hx-post=\"")
@@ -356,8 +486,8 @@ func createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) t
 		if err != nil {
 			return err
 		}
-		var_15 := `Select Attribute`
-		_, err = templBuffer.WriteString(var_15)
+		var_21 := `Select Attribute`
+		_, err = templBuffer.WriteString(var_21)
 		if err != nil {
 			return err
 		}
@@ -378,8 +508,8 @@ func createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) t
 			if err != nil {
 				return err
 			}
-			var var_16 string = a.AISeedQuery
-			_, err = templBuffer.WriteString(templ.EscapeString(var_16))
+			var var_22 string = a.AISeedQuery
+			_, err = templBuffer.WriteString(templ.EscapeString(var_22))
 			if err != nil {
 				return err
 			}
@@ -392,8 +522,8 @@ func createAttributeSetLink(attributes []Attribute, attributeSet AttributeSet) t
 		if err != nil {
 			return err
 		}
-		var_17 := `Assign Attribute`
-		_, err = templBuffer.WriteString(var_17)
+		var_23 := `Assign Attribute`
+		_, err = templBuffer.WriteString(var_23)
 		if err != nil {
 			return err
 		}
@@ -426,9 +556,9 @@ func assignAttributeToSet(attributeSet AttributeSet) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_18 := templ.GetChildren(ctx)
-		if var_18 == nil {
-			var_18 = templ.NopComponent
+		var_24 := templ.GetChildren(ctx)
+		if var_24 == nil {
+			var_24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 				_, err = templBuffer.WriteString("<div class=\"p-4 shadow rounded-lg bg-white\"><form hx-post=\"")
@@ -443,8 +573,8 @@ func assignAttributeToSet(attributeSet AttributeSet) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_19 := `Select AttributeSet`
-		_, err = templBuffer.WriteString(var_19)
+		var_25 := `Select AttributeSet`
+		_, err = templBuffer.WriteString(var_25)
 		if err != nil {
 			return err
 		}
@@ -460,8 +590,8 @@ func assignAttributeToSet(attributeSet AttributeSet) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_20 := `Attribute Seed Query`
-		_, err = templBuffer.WriteString(var_20)
+		var_26 := `Attribute Seed Query`
+		_, err = templBuffer.WriteString(var_26)
 		if err != nil {
 			return err
 		}
@@ -469,8 +599,8 @@ func assignAttributeToSet(attributeSet AttributeSet) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_21 := `Assign Attribute`
-		_, err = templBuffer.WriteString(var_21)
+		var_27 := `Assign Attribute`
+		_, err = templBuffer.WriteString(var_27)
 		if err != nil {
 			return err
 		}
@@ -491,8 +621,8 @@ func assignAttributeToSet(attributeSet AttributeSet) templ.Component {
 			if err != nil {
 				return err
 			}
-			var var_22 string = a.AISeedQuery
-			_, err = templBuffer.WriteString(templ.EscapeString(var_22))
+			var var_28 string = a.AISeedQuery
+			_, err = templBuffer.WriteString(templ.EscapeString(var_28))
 			if err != nil {
 				return err
 			}

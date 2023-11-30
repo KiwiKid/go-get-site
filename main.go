@@ -73,6 +73,7 @@ func main() {
 
 	r.HandleFunc("/sites/{websiteId}/pages", handlePages(ctx)).Methods("GET", "POST")
 
+	r.HandleFunc("/sites/{websiteId}/result", presentAttributeSetResult()).Methods("GET", "POST")
 	r.HandleFunc("/sites/{websiteId}/result/{attributeSetId}", presentAttributeSetResult()).Methods("GET", "POST")
 
 	r.Handle("/search", presentQuery()).Methods("GET", "POST")
@@ -607,7 +608,7 @@ func presentWebsitePageBlocks() http.HandlerFunc {
 			}
 
 			if len(nextPage) > 0 {
-				pageLoader := pageBlockLoader(websitePageBlocksURL(nextPage[0].WebsiteID, nextPage[0].ID), "load, every 2s", remaining)
+				pageLoader := pageBlockLoader(websitePageBlocksURL(nextPage[0].WebsiteID, nextPage[0].ID), "load, every 10s", remaining)
 				templ.Handler(pageLoader).ServeHTTP(w, r)
 			} else {
 				pageLoaderInit := pageBlockLoaderInit(websiteBlocksURL(websiteId), "No pages found to load blocks for")
@@ -1548,14 +1549,7 @@ func presentAttributeSetResult() http.HandlerFunc {
 		if err != nil {
 			panic(err)
 		}
-
 		vars := mux.Vars(r)
-		attributeSetIdStr := vars["attributeSetId"]
-		attributeSetId, attributeSetIdErr := stringToUint(attributeSetIdStr)
-		if attributeSetIdErr != nil {
-			log.Printf("Failed to stringToUint attributeSetId, %v", err)
-			http.Error(w, "Failed to stringToUint attributeSetId", http.StatusInternalServerError)
-		}
 
 		websiteIdStr := vars["websiteId"]
 		websiteId, err := stringToUint(websiteIdStr)
@@ -1563,6 +1557,21 @@ func presentAttributeSetResult() http.HandlerFunc {
 			log.Printf("Failed to stringToUint websiteId, %v", err)
 			http.Error(w, "Failed to stringToUint websiteId", http.StatusInternalServerError)
 			return
+		}
+
+		attributeSetIdStr := vars["attributeSetId"]
+		attributeSetId, attributeSetIdErr := stringToUint(attributeSetIdStr)
+		if attributeSetIdErr != nil {
+
+			sets, modelsErr := db.ListAllAttributeSets()
+			if modelsErr != nil {
+				log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
+				return
+			}
+
+			setListContainerComp := attributeSetSelected(sets, attributeResultURL(websiteId, 0), websiteId, 0)
+
+			templ.Handler(setListContainerComp).ServeHTTP(w, r)
 		}
 
 		switch r.Method {

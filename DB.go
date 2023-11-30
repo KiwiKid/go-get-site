@@ -208,7 +208,10 @@ type AttributeResult struct {
 }
 
 func attributeResultURL(websiteID uint, attributeSetID uint) string {
-	return fmt.Sprintf("/sites/%d/result/%d", websiteID, attributeSetID)
+	if attributeSetID > 0 {
+		return fmt.Sprintf("/sites/%d/result/%d", websiteID, attributeSetID)
+	}
+	return fmt.Sprintf("/sites/%d/result", websiteID)
 }
 
 func (ar *AttributeResult) attributeResultID() string {
