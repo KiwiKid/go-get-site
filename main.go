@@ -72,6 +72,7 @@ func main() {
 	r.HandleFunc("/sites/{websiteId}/login", presentLogin(ctx)).Methods("GET")
 
 	r.HandleFunc("/sites/{websiteId}/pages", handlePages(ctx)).Methods("GET", "POST")
+	r.HandleFunc("/sites/{websiteId}/pages/result/{attributeSetId}", handlePages(ctx)).Methods("GET")
 
 	r.HandleFunc("/sites/{websiteId}/result", presentAttributeSetResult()).Methods("GET", "POST")
 	r.HandleFunc("/sites/{websiteId}/result/{attributeSetId}", presentAttributeSetResult()).Methods("GET", "POST")
@@ -945,7 +946,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 			page = 1
 		}
 
-		selectedAttributeSetIdStr := r.URL.Query().Get("selectedAttributeSetId")
+		selectedAttributeSetIdStr := vars["selectedAttributeSetId"]
 		selectedAttributeSetId, selectedAttributeSetIdErr := stringToUint(selectedAttributeSetIdStr)
 
 		viewPageSizeStr := r.URL.Query().Get("viewPageSize")
@@ -1067,7 +1068,7 @@ func handlePages(ctx context.Context) http.HandlerFunc {
 		dripLoadStr := fmt.Sprintf("every %dm", dripLoadFreqMin)
 		log.Printf("pagesList length: %d dripLoad %v dripLoadCount %d selectedAttributeSetId: %d", len(pagesList), dripLoad, dripLoadCount, selectedAttributeSetId)
 
-		attributeSets, modelsErr := db.ListAllAttributeSets()
+		attributeSets, modelsErr := db.ListAllAttributeSets(selectedAttributeSetId)
 		if modelsErr != nil {
 			log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
 			return
@@ -1563,13 +1564,16 @@ func presentAttributeSetResult() http.HandlerFunc {
 		attributeSetId, attributeSetIdErr := stringToUint(attributeSetIdStr)
 		if attributeSetIdErr != nil {
 
-			sets, modelsErr := db.ListAllAttributeSets()
+			log.Printf("ListAllAttributeSets(%d)", attributeSetId)
+
+			sets, modelsErr := db.ListAllAttributeSets(attributeSetId)
 			if modelsErr != nil {
 				log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
 				return
 			}
+			log.Printf("attributeSetSelected(websiteId: %d attributeSetId: %d)", websiteId, attributeSetId)
 
-			setListContainerComp := attributeSetSelected(sets, attributeResultURL(websiteId, 0), websiteId, 0)
+			setListContainerComp := attributeSetSelected(sets, attributeResultURL(websiteId, 0), websiteId, attributeSetId)
 
 			templ.Handler(setListContainerComp).ServeHTTP(w, r)
 		}
@@ -1793,7 +1797,7 @@ func presentAttributeSet() http.HandlerFunc {
 
 		}
 
-		sets, modelsErr := db.ListAllAttributeSets()
+		sets, modelsErr := db.ListAllAttributeSets(0)
 		if modelsErr != nil {
 			log.Printf("Error ListAllAttributeSets link: %v", modelsErr)
 			return

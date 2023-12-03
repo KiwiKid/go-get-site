@@ -10,6 +10,7 @@ import "io"
 import "bytes"
 
 import "strconv"
+import "fmt"
 
 func pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet map[string]struct{}, progress string, viewPageSize int, processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool, attributeSets []AttributeSet, selectedAttributeSetId uint, message string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
@@ -872,31 +873,27 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			if selectedAttributeSetId > 0 {
-				for _, aset := range attributeSets {
-					if selectedAttributeSetId == aset.ID {
-						_, err = templBuffer.WriteString("<div id=\"")
-						if err != nil {
-							return err
-						}
-						_, err = templBuffer.WriteString(templ.EscapeString(AttributeSetResultId(website.ID, item.ID, selectedAttributeSetId)))
-						if err != nil {
-							return err
-						}
-						_, err = templBuffer.WriteString("\">")
-						if err != nil {
-							return err
-						}
-						var_57 := `[click-to-load]`
-						_, err = templBuffer.WriteString(var_57)
-						if err != nil {
-							return err
-						}
-						_, err = templBuffer.WriteString("</div>")
-						if err != nil {
-							return err
-						}
-					}
+			for _, aset := range attributeSets {
+				_, err = templBuffer.WriteString("<div class=\"hidden\" id=\"")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(templ.EscapeString(AttributeSetResultId(website.ID, item.ID, aset.ID)))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("\">")
+				if err != nil {
+					return err
+				}
+				var_57 := `[click-to-load]`
+				_, err = templBuffer.WriteString(var_57)
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</div>")
+				if err != nil {
+					return err
 				}
 			}
 			_, err = templBuffer.WriteString("</div></div><!--")
@@ -1096,7 +1093,15 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 					return err
 				}
 			}
-			_, err = templBuffer.WriteString("</ul></details></details></div><div class=\"flex-grow p-2\"><details class=\"p-5 border border-gray-200 rounded-lg shadow-sm\"><summary class=\"cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900\">")
+			_, err = templBuffer.WriteString("</ul></details></details></div><div class=\"flex-grow p-2\" id=\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(templ.EscapeString(templ.EscapeString(fmt.Sprintf("page-block-container-%d", item.ID))))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("\"><details class=\"p-5 border border-gray-200 rounded-lg shadow-sm\"><summary class=\"cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900\">")
 			if err != nil {
 				return err
 			}
@@ -1113,7 +1118,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			_, err = templBuffer.WriteString("<div id=\"page-block-container\" hx-trigger=\"intersect once\" hx-get=\"")
+			_, err = templBuffer.WriteString("<div hx-trigger=\"intersect once\" hx-get=\"")
 			if err != nil {
 				return err
 			}
@@ -1133,7 +1138,7 @@ func pages(pages []Page, website Website, count LinkCountResult, pageUrl string,
 			if err != nil {
 				return err
 			}
-			err = loadPageBlocks(websitePageBlocksURL(website.ID, item.ID)).Render(ctx, templBuffer)
+			err = loadPageBlocks(websitePageBlocksURL(website.ID, item.ID), item.ID).Render(ctx, templBuffer)
 			if err != nil {
 				return err
 			}

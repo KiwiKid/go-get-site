@@ -1,6 +1,7 @@
 package main
 
 import "strconv"
+import "fmt"
 
 templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string, prevPage string, nextPage string, addedPagesSet  map[string]struct{}, progress string, viewPageSize int,  processPageSize int, dripLoad bool, dripLoadCount int, dripLoadFreqMin int, dripLoadStr string, processAll bool, skipNewLinkInsert bool, ignoreWarnings bool, attributeSets []AttributeSet, selectedAttributeSetId uint,  message string) {
 	<html>
@@ -242,12 +243,8 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 								}
 								<div class="w-1/4 p-2">{ item.Title }</div>
 								<div class="w-1/3 p-2"><a target="_blank" href={ templ.SafeURL(item.URL) }>{ item.URL }</a></div>
-								if selectedAttributeSetId > 0 {
-									for _, aset := range attributeSets {
-										if selectedAttributeSetId == aset.ID {
-											<div id={ AttributeSetResultId(website.ID, item.ID, selectedAttributeSetId) }>[click-to-load]</div>
-										}
-									}
+								for _, aset := range attributeSets {
+									<div class="hidden" id={ AttributeSetResultId(website.ID, item.ID, aset.ID) }>[click-to-load]</div>
 								}
 							</div>
 						</div>
@@ -286,14 +283,14 @@ templ pages(pages []Page, website Website, count LinkCountResult, pageUrl string
 									</details>
 								</details>
 							</div>
-							<div class="flex-grow p-2">
+							<div class="flex-grow p-2" id={ templ.EscapeString(fmt.Sprintf("page-block-container-%d", item.ID)) }>
 								<details class="p-5 border border-gray-200 rounded-lg shadow-sm">
 									<summary class="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">Page Blocks </summary>
 									@deletePageBlocks(website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks"))
-									<div id="page-block-container" hx-trigger="intersect once" hx-get={ website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks") }>
+									<div hx-trigger="intersect once" hx-get={ website.websiteURLWithPagesIdAndPostFix(item.ID, "blocks") }>
 										<div class="htmx-indicator">@spinner()</div>
 									</div>
-									@loadPageBlocks( websitePageBlocksURL(website.ID, item.ID))
+									@loadPageBlocks( websitePageBlocksURL(website.ID, item.ID), item.ID)
 								</details>
 							</div>
 						</div>

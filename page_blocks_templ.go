@@ -9,7 +9,10 @@ import "context"
 import "io"
 import "bytes"
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 func pageBlocks(websiteId uint, pageId uint, blocks []PageBlock) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
@@ -105,7 +108,7 @@ func pageBlocks(websiteId uint, pageId uint, blocks []PageBlock) templ.Component
 	})
 }
 
-func loadPageBlocks(url string) templ.Component {
+func loadPageBlocks(url string, pageId uint) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -118,7 +121,15 @@ func loadPageBlocks(url string) templ.Component {
 			var_7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div><button hx-target=\"#page-block-container\" class=\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring\" hx-post=\"")
+		_, err = templBuffer.WriteString("<div><button hx-target=\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(templ.EscapeString(fmt.Sprintf("#page-block-container-%d", pageId))))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\" class=\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring\" hx-post=\"")
 		if err != nil {
 			return err
 		}

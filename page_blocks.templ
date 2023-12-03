@@ -1,6 +1,9 @@
 package main
 
-import "strconv"
+import (
+"fmt"
+"strconv"
+)
 
 templ pageBlocks(websiteId uint, pageId uint, blocks []PageBlock) {
 	if  len(blocks) == 0 {
@@ -23,9 +26,9 @@ templ pageBlocks(websiteId uint, pageId uint, blocks []PageBlock) {
 	}
 }
 
-templ loadPageBlocks(url string) {
+templ loadPageBlocks(url string, pageId uint) {
 	<div>
-		<button hx-target="#page-block-container" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring" hx-post={ url }>
+		<button hx-target={ templ.EscapeString(fmt.Sprintf("#page-block-container-%d", pageId)) } class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring" hx-post={ url }>
 			Process Page into Blocks
 			<span class="htmx-indicator">@spinner()</span>
 		</button>

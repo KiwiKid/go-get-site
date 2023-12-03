@@ -4,46 +4,35 @@ import (
 	"strconv"
 )
 
-templ attributeSetSelect(attributeSets []AttributeSet, url string, selectedAttributeSetId uint) {
-	<select
- 		id="selectedAttributeSetId"
- 		name="selectedAttributeSetId"
- 		class="bg-white text-gray-700 p-4 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
- 		hx-trigger="change"
- 		hx-target="#container"
- 		hx-get={ url }
- 		hx-include="this"
-	>
-		<span class="htmx-indicator">@spinner()</span>
-		<option
- 			value=""
- 			class="text-gray-500"
- 			if selectedAttributeSetId == 0 {
-				selected
-			}
-		>--Select a different attribute set--</option>
+templ attributeSetSelect(attributeSets []AttributeSet, url string, websiteId uint, selectedAttributeSetId uint) {
+	if selectedAttributeSetId == 0 {
+		Select an attribute set:
 		for _, att := range attributeSets {
-			<option
- 				value={ strconv.Itoa(int(att.ID)) }
- 				class="text-gray-700"
- 				if selectedAttributeSetId == att.ID {
-					selected
-				}
-			>{ att.Name }</option>
+			<a hx-get={ attributeResultURL(websiteId, att.ID) } class="text-blue-600 hover:text-blue-800 px-2">{ att.Name }</a>
 		}
-	</select>
+	} else {
+		for _, att := range attributeSets {
+			if att.ID == selectedAttributeSetId {
+				<span class="font-bold text-gray-700">{ "[[" }</span>
+			}
+			<a hx-get={ attributeResultURL(websiteId, att.ID) } class="{if att.ID == selectedAttributeSetId &#39;bg-blue-100 text-blue-800 px-2&#39; else &#39;text-blue-600 hover:text-blue-800 px-2&#39;}">{ att.Name }</a>
+			if att.ID == selectedAttributeSetId {
+				<span class="font-bold text-gray-700">{ "]]" }</span>
+			}
+		}
+	}
 }
 
 templ attributeSetSelected(attributeSets []AttributeSet, pageUrl string, websiteId uint, selectedAttributeSetId uint) {
-	<div class="w-1/3 p-2">
+	<div class="w-1/3 p-2" id="set-container">
 		Attribute Set:
-		<a href="/aset">(manage)</a>
+		<a href="/aset">(manage - { strconv.Itoa(int(selectedAttributeSetId)) })</a>
 		if selectedAttributeSetId == 0 {
 			<div>
-				@attributeSetSelect(attributeSets, pageUrl, selectedAttributeSetId)
+				@attributeSetSelect(attributeSets, pageUrl, websiteId, selectedAttributeSetId)
 			</div>
 		} else {
-			@attributeSetSelect(attributeSets, pageUrl, selectedAttributeSetId)
+			@attributeSetSelect(attributeSets, pageUrl, websiteId, selectedAttributeSetId)
 			<form hx-post={ attributeResultURL(websiteId, selectedAttributeSetId) }>
 				<input required hidden id="selectedAttributeSetId" name="selectedAttributeSetId" value={ strconv.Itoa(int(selectedAttributeSetId)) }/>
 				<!--<input required hidden id="page" name="page" value={ strconv.Itoa(int(page)) }/>

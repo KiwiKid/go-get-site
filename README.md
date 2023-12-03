@@ -16,9 +16,6 @@ go build -o app/go-get-site && ./app/go-get-site
 
 ```
 
-
-NB: un-comment the Migrate() call to apply db migraitons
-
 TODO:
 
 - Add air for development hot-reloading

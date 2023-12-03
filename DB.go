@@ -1148,9 +1148,16 @@ func (db *DB) DeleteAttributeSet(id uint) error {
 	return nil
 }
 
-func (db *DB) ListAllAttributeSets() ([]AttributeSet, error) {
+func (db *DB) ListAllAttributeSets(attributeSetId uint) ([]AttributeSet, error) {
 	var sets []AttributeSet
-	err := db.conn.Preload("AttributeSetLinks").Find(&sets).Error
+	query := db.conn.Preload("AttributeSetLinks").Find(&sets)
+
+	if attributeSetId > 0 {
+		query = query.Where("attribute_set_id = ?", attributeSetId)
+	}
+
+	err := query.Error
+
 	if err != nil {
 		return nil, err
 	}
